@@ -27,6 +27,9 @@ services:
       PUBLIC_DATA_API_KEY: ${PUBLIC_DATA_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
       SOCIAL_AUTH_MODE: ${SOCIAL_AUTH_MODE:-mock}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
     volumes:
       - bff-data:/app/data
     depends_on:

@@ -7,10 +7,16 @@ import { config } from './config.js';
 export const socialProviderSchema = z.enum(['google', 'kakao', 'naver']);
 export type SocialProvider = z.infer<typeof socialProviderSchema>;
 
-export const socialLoginSchema = z.object({
-  provider: socialProviderSchema,
-  accessToken: z.string().min(1),
-});
+export const socialLoginSchema = z
+  .object({
+    provider: socialProviderSchema,
+    accessToken: z.string().min(1).optional(),
+    authorizationCode: z.string().min(1).optional(),
+    redirectUri: z.string().min(1).optional(),
+  })
+  .refine((body) => body.accessToken || body.authorizationCode, {
+    message: 'accessToken or authorizationCode is required',
+  });
 
 type User = {
   id: string;
@@ -125,6 +131,42 @@ async function verifyKakaoToken(accessToken: string): Promise<VerifiedSocialUser
   };
 }
 
+async function exchangeKakaoAuthorizationCode(authorizationCode: string, redirectUri?: string) {
+  const resolvedRedirectUri = redirectUri || config.kakaoRedirectUri;
+  if (!config.kakaoRestApiKey) {
+    throw new Error('KAKAO_REST_API_KEY is not configured');
+  }
+  if (!resolvedRedirectUri) {
+    throw new Error('KAKAO_REDIRECT_URI is not configured');
+  }
+
+  const params = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: config.kakaoRestApiKey,
+    redirect_uri: resolvedRedirectUri,
+    code: authorizationCode,
+  });
+  if (config.kakaoClientSecret) {
+    params.set('client_secret', config.kakaoClientSecret);
+  }
+
+  const response = await fetch('https://kauth.kakao.com/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Kakao authorization code exchange failed: ${await response.text()}`);
+  }
+
+  const body: any = await response.json();
+  if (!body.access_token) {
+    throw new Error('Kakao token response did not include access_token');
+  }
+  return String(body.access_token);
+}
+
 async function verifyNaverToken(accessToken: string): Promise<VerifiedSocialUser> {
   const response = await fetch('https://openapi.naver.com/v1/nid/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -159,7 +201,19 @@ export async function verifySocialToken(provider: SocialProvider, accessToken: s
   return verifyNaverToken(accessToken);
 }
 
-export async function loginWithSocial(provider: SocialProvider, accessToken: string) {
+export async function loginWithSocial(input: z.infer<typeof socialLoginSchema>) {
+  const provider = input.provider;
+  let accessToken = input.accessToken;
+  if (!accessToken && input.authorizationCode) {
+    if (provider !== 'kakao') {
+      throw new Error('authorizationCode login is currently supported for Kakao only');
+    }
+    accessToken = await exchangeKakaoAuthorizationCode(input.authorizationCode, input.redirectUri);
+  }
+  if (!accessToken) {
+    throw new Error('accessToken is required');
+  }
+
   const verified = await verifySocialToken(provider, accessToken);
   if (!verified.providerUserId) {
     throw new Error('Social provider did not return a user id');

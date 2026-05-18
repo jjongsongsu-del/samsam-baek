@@ -38,7 +38,7 @@ app.get('/health', (_req, res) => {
 app.post('/v1/auth/social', async (req, res, next) => {
   try {
     const body = socialLoginSchema.parse(req.body);
-    res.json(await loginWithSocial(body.provider, body.accessToken));
+    res.json(await loginWithSocial(body));
   } catch (error) {
     next(error);
   }
