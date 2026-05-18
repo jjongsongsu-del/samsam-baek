@@ -29,7 +29,7 @@ export class InspectionServiceError extends Error {
   }
 }
 
-const REQUEST_TIMEOUT_MS = 28000;
+const REQUEST_TIMEOUT_MS = 30000;
 
 const makeServiceError = async (response: Response) => {
   const message = await response.text();

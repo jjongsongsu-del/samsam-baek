@@ -209,6 +209,24 @@ const InspectionScreen = ({ route, navigation }: any) => {
     setAccountState(state);
   };
 
+  const imageFrame = useMemo(() => {
+    if (!pendingImage || stageSize.width <= 1 || stageSize.height <= 1) {
+      return { left: 0, top: 0, width: stageSize.width, height: stageSize.height };
+    }
+
+    const stageRatio = stageSize.width / stageSize.height;
+    const imageRatio = pendingImage.width / pendingImage.height;
+    if (imageRatio > stageRatio) {
+      const width = stageSize.width;
+      const height = width / imageRatio;
+      return { left: 0, top: (stageSize.height - height) / 2, width, height };
+    }
+
+    const height = stageSize.height;
+    const width = height * imageRatio;
+    return { left: (stageSize.width - width) / 2, top: 0, width, height };
+  }, [pendingImage, stageSize.height, stageSize.width]);
+
   const setImageForSelection = (image: PendingImage) => {
     setPendingImage(image);
     setSelection(DEFAULT_SELECTION);
@@ -302,12 +320,12 @@ const InspectionScreen = ({ route, navigation }: any) => {
         onPanResponderMove: (_, gesture) => {
           const start = gestureStartSelection.current;
           updateSelection({
-            x: start.x + gesture.dx / stageSize.width,
-            y: start.y + gesture.dy / stageSize.height,
+            x: start.x + gesture.dx / imageFrame.width,
+            y: start.y + gesture.dy / imageFrame.height,
           });
         },
       }),
-    [selection, stageSize.height, stageSize.width],
+    [imageFrame.height, imageFrame.width, selection],
   );
 
   const createResizeResponder = (handle: ResizeHandle) =>
@@ -318,7 +336,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
         gestureStartSelection.current = selection;
       },
       onPanResponderMove: (_, gesture) => {
-        updateSelectionFromHandle(handle, gesture.dx / stageSize.width, gesture.dy / stageSize.height);
+        updateSelectionFromHandle(handle, gesture.dx / imageFrame.width, gesture.dy / imageFrame.height);
       },
     });
 
@@ -333,7 +351,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
       sw: createResizeResponder('sw'),
       se: createResizeResponder('se'),
     }),
-    [selection, stageSize.height, stageSize.width],
+    [imageFrame.height, imageFrame.width, selection],
   );
 
   const analyzeSelectedImage = async () => {
@@ -602,6 +620,13 @@ const InspectionScreen = ({ route, navigation }: any) => {
         </View>
         <View style={styles.scanPreview}>
           {photoUri || pendingImage?.uri ? <Image source={{ uri: photoUri ?? pendingImage?.uri }} style={styles.scanPreviewImage} /> : null}
+          <View style={styles.scanShade} />
+          <View style={styles.scanGrid}>
+            <View style={styles.scanGridLine} />
+            <View style={styles.scanGridLine} />
+            <View style={styles.scanGridLine} />
+          </View>
+          <View style={styles.scanFrame} />
           <Animated.View style={[styles.scanBeam, { transform: [{ translateY: scanTranslateY }] }]} />
         </View>
       </Panel>
@@ -609,9 +634,13 @@ const InspectionScreen = ({ route, navigation }: any) => {
   };
 
   const renderHandle = (handle: ResizeHandle, style: any, icon: string) => (
-    <View {...resizeResponders[handle].panHandlers} style={[styles.selectionHandle, style]}>
+    <View {...resizeResponders[handle].panHandlers} hitSlop={12} style={[styles.selectionHandle, style]}>
       <Ionicons name={icon as any} size={14} color={colors.white} />
     </View>
+  );
+
+  const renderEdgeDrag = (handle: ResizeHandle, style: any) => (
+    <View {...resizeResponders[handle].panHandlers} style={[styles.selectionEdgeDrag, style]} />
   );
 
   const renderInspectionError = () => {
@@ -661,13 +690,17 @@ const InspectionScreen = ({ route, navigation }: any) => {
             style={[
               styles.selectionBox,
               {
-                left: `${selection.x * 100}%`,
-                top: `${selection.y * 100}%`,
-                width: `${selection.width * 100}%`,
-                height: `${selection.height * 100}%`,
+                left: imageFrame.left + imageFrame.width * selection.x,
+                top: imageFrame.top + imageFrame.height * selection.y,
+                width: imageFrame.width * selection.width,
+                height: imageFrame.height * selection.height,
               },
             ]}
           >
+            {renderEdgeDrag('n', styles.edgeN)}
+            {renderEdgeDrag('s', styles.edgeS)}
+            {renderEdgeDrag('w', styles.edgeW)}
+            {renderEdgeDrag('e', styles.edgeE)}
             <View style={styles.selectionDragHint}>
               <Ionicons name="move" size={18} color={colors.white} />
               <Text style={styles.selectionDragText}>이동</Text>
@@ -1252,23 +1285,33 @@ const styles = StyleSheet.create({
   selectionDragText: { color: colors.white, fontSize: 12, lineHeight: 18, fontWeight: '700' },
   selectionHandle: {
     position: 'absolute',
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: colors.primary60,
     borderWidth: 2,
     borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 4,
   },
-  handleN: { top: -17, left: '50%', marginLeft: -17 },
-  handleS: { bottom: -17, left: '50%', marginLeft: -17 },
-  handleW: { left: -17, top: '50%', marginTop: -17 },
-  handleE: { right: -17, top: '50%', marginTop: -17 },
-  handleNW: { left: -17, top: -17 },
-  handleNE: { right: -17, top: -17 },
-  handleSW: { left: -17, bottom: -17 },
-  handleSE: { right: -17, bottom: -17 },
+  selectionEdgeDrag: {
+    position: 'absolute',
+    zIndex: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.001)',
+  },
+  edgeN: { left: 26, right: 26, top: -16, height: 32 },
+  edgeS: { left: 26, right: 26, bottom: -16, height: 32 },
+  edgeW: { top: 26, bottom: 26, left: -16, width: 32 },
+  edgeE: { top: 26, bottom: 26, right: -16, width: 32 },
+  handleN: { top: -21, left: '50%', marginLeft: -21 },
+  handleS: { bottom: -21, left: '50%', marginLeft: -21 },
+  handleW: { left: -21, top: '50%', marginTop: -21 },
+  handleE: { right: -21, top: '50%', marginTop: -21 },
+  handleNW: { left: -21, top: -21 },
+  handleNE: { right: -21, top: -21 },
+  handleSW: { left: -21, bottom: -21 },
+  handleSE: { right: -21, bottom: -21 },
   rangeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   smallButton: {
     width: '31.8%',
@@ -1303,13 +1346,35 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   scanPreviewImage: { width: '100%', height: '100%' },
+  scanShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(2, 18, 32, 0.24)',
+  },
+  scanGrid: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-evenly',
+  },
+  scanGridLine: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  scanFrame: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    top: 18,
+    bottom: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.62)',
+    borderRadius: 8,
+  },
   scanBeam: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: 0,
-    height: 14,
-    backgroundColor: 'rgba(37, 110, 244, 0.76)',
+    height: 22,
+    backgroundColor: 'rgba(45, 212, 191, 0.82)',
     shadowColor: colors.primary50,
     shadowOpacity: 0.7,
     shadowRadius: 12,

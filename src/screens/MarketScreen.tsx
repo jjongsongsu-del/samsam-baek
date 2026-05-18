@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppSurface } from '../components/AppSurface';
 import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -255,38 +255,50 @@ const MarketScreen = ({ route }: any) => {
         </Panel>
       ))}
 
-      {selectedDetail ? (
-        <Panel tone="light">
-          <View style={styles.historyHeader}>
-            <View>
-              <Text style={styles.lightTitle}>
-                {selectedDetail.category} / {selectedDetail.grade}
-              </Text>
-              <Text style={styles.lightText}>최근 3개월 날짜별 가격과 전일 등락률</Text>
-            </View>
-            {isHistoryLoading ? <ActivityIndicator size="small" color={colors.primary60} /> : null}
-          </View>
-          {historyRows.map((row) => {
-            const diff = row.diffPreviousTradePrice ?? 0;
-            const rate = row.ratePreviousTradePrice ?? 0;
-            return (
-              <View key={row.day} style={styles.historyRow}>
-                <View style={styles.historyDateBox}>
-                  <Text style={styles.historyDate}>{formatDate(row.day)}</Text>
-                  <Text style={styles.historyCompare}>{row.previousTradeDay ? `${formatDate(row.previousTradeDay)} 대비` : '직전 거래일 없음'}</Text>
-                </View>
-                <Text style={styles.historyPrice}>{formatPrice(row.latestPrice)}</Text>
-                <Text style={diff > 0 ? styles.up : diff < 0 ? styles.down : styles.flat}>{rate.toFixed(2)}%</Text>
+      <Modal visible={!!selectedDetail} transparent animationType="fade" onRequestClose={() => setSelectedDetail(undefined)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.historyHeader}>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.lightTitle}>{selectedDetail ? `${selectedDetail.category} / ${selectedDetail.grade}` : ''}</Text>
+                <Text style={styles.lightText}>최근 3개월 날짜별 가격과 전일 등락을 확인합니다.</Text>
               </View>
-            );
-          })}
-          {!isHistoryLoading && historyRows.length === 0 ? <Text style={styles.lightText}>최근 3개월 상세 가격 데이터가 없습니다.</Text> : null}
-          <Pressable style={styles.sourceButton} onPress={() => Linking.openURL(selectedDetail.sourceUrl)}>
-            <Text style={styles.sourceText}>인삼통 세부 리포트 보기</Text>
-            <Ionicons name="open-outline" size={15} color={colors.primary60} />
-          </Pressable>
-        </Panel>
-      ) : null}
+              <Pressable style={styles.modalCloseButton} onPress={() => setSelectedDetail(undefined)}>
+                <Ionicons name="close" size={20} color={colors.ink} />
+              </Pressable>
+            </View>
+            {isHistoryLoading ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="small" color={colors.primary60} />
+                <Text style={styles.lightText}>상세 시세를 불러오는 중입니다.</Text>
+              </View>
+            ) : null}
+            <ScrollView style={styles.modalHistoryList}>
+              {historyRows.map((row) => {
+                const diff = row.diffPreviousTradePrice ?? 0;
+                const rate = row.ratePreviousTradePrice ?? 0;
+                return (
+                  <View key={row.day} style={styles.historyRow}>
+                    <View style={styles.historyDateBox}>
+                      <Text style={styles.historyDate}>{formatDate(row.day)}</Text>
+                      <Text style={styles.historyCompare}>{row.previousTradeDay ? `${formatDate(row.previousTradeDay)} 대비` : '직전 거래일 없음'}</Text>
+                    </View>
+                    <Text style={styles.historyPrice}>{formatPrice(row.latestPrice)}</Text>
+                    <Text style={diff > 0 ? styles.up : diff < 0 ? styles.down : styles.flat}>{rate.toFixed(2)}%</Text>
+                  </View>
+                );
+              })}
+              {!isHistoryLoading && historyRows.length === 0 ? <Text style={styles.lightText}>최근 3개월 상세 가격 데이터가 없습니다.</Text> : null}
+            </ScrollView>
+            {selectedDetail ? (
+              <Pressable style={styles.sourceButton} onPress={() => Linking.openURL(selectedDetail.sourceUrl)}>
+                <Text style={styles.sourceText}>인삼통 원문 리포트 보기</Text>
+                <Ionicons name="open-outline" size={15} color={colors.primary60} />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
 
       {!isDetailLoading && detailedPrices.length > 0 && filteredDetailedPrices.length === 0 ? (
         <Panel>
@@ -396,6 +408,31 @@ const styles = StyleSheet.create({
   detailPrice: { color: colors.cream, fontSize: 15, lineHeight: 22, fontWeight: '700' },
   detailLink: { color: colors.primary60, fontSize: 12, lineHeight: 18, fontWeight: '700', marginTop: 2 },
   historyHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.46)',
+    justifyContent: 'flex-end',
+    padding: 14,
+  },
+  modalSheet: {
+    maxHeight: '78%',
+    borderRadius: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    padding: 16,
+  },
+  modalTitleWrap: { flex: 1 },
+  modalCloseButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary5,
+  },
+  modalLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
+  modalHistoryList: { maxHeight: 420 },
   lightTitle: { color: colors.ink, fontSize: 17, lineHeight: 26, fontWeight: '700' },
   lightText: { color: colors.gray60, fontSize: 13, lineHeight: 20, marginTop: 2 },
   historyRow: {
