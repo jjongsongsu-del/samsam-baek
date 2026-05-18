@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
+import numpy as np
 from PIL import Image
 from pydantic import BaseModel, Field
 
@@ -141,7 +142,8 @@ def health():
 def predict_ginseng_age_grade(request: PredictRequest):
     image = _decode_image(request.imageBase64)
     model = _load_age_grade_model()
-    result = model(image, size=int(os.getenv("SAMSAM_YOLO_IMAGE_SIZE", "640")))
+    image_array = np.asarray(image)
+    result = model(image_array, size=int(os.getenv("SAMSAM_YOLO_IMAGE_SIZE", "640")))
     predictions = result.xyxy[0]
 
     if len(predictions) == 0:
