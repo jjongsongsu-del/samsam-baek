@@ -26,6 +26,7 @@ android/build/
 android/app/build/
 
 services/bff/dist/
+services/bff/data/auth.json
 services/ai/app/__pycache__/
 **/__pycache__/
 *.pyc

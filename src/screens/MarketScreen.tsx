@@ -30,7 +30,7 @@ const fallbackPrices: CurrentMarketPrice[] = latestPrices.map((item) => ({
 }));
 
 const formatPrice = (value?: number) => (value == null ? '-' : `${Math.round(value).toLocaleString('ko-KR')}원`);
-const formatDate = (value: string) => value.replace(/-/g, '.');
+const formatDate = (value?: string) => (value ? value.replace(/-/g, '.') : '-');
 const normalizeSearch = (value: string) => value.replace(/\s+/g, '').toLowerCase();
 
 const MarketScreen = ({ route }: any) => {
