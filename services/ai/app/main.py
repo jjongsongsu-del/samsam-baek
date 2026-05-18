@@ -1,4 +1,5 @@
 import base64
+import binascii
 import os
 import re
 import sys
@@ -8,7 +9,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import numpy as np
 from PIL import Image
 from pydantic import BaseModel, Field
@@ -48,8 +49,13 @@ class PredictResponse(BaseModel):
 def _decode_image(image_base64: str) -> Image.Image:
     if "," in image_base64 and image_base64.lstrip().startswith("data:"):
         image_base64 = image_base64.split(",", 1)[1]
-    image_bytes = base64.b64decode(image_base64, validate=True)
-    return Image.open(BytesIO(image_bytes)).convert("RGB")
+    try:
+        image_bytes = base64.b64decode(image_base64, validate=True)
+        image = Image.open(BytesIO(image_bytes))
+        image.load()
+        return image.convert("RGB")
+    except (binascii.Error, OSError, ValueError) as error:
+        raise HTTPException(status_code=422, detail="Invalid image data") from error
 
 
 def _ensure_yolov5_source() -> Path:
@@ -141,9 +147,12 @@ def health():
 @app.post("/v1/models/ginseng-age-grade:predict", response_model=PredictResponse)
 def predict_ginseng_age_grade(request: PredictRequest):
     image = _decode_image(request.imageBase64)
+    if image.width < 5 or image.height < 5:
+        raise HTTPException(status_code=422, detail="Image is too small for diagnosis")
+
     model = _load_age_grade_model()
     image_array = np.asarray(image)
-    result = model(image_array, size=int(os.getenv("SAMSAM_YOLO_IMAGE_SIZE", "640")))
+    result = model([image_array], size=int(os.getenv("SAMSAM_YOLO_IMAGE_SIZE", "640")))
     predictions = result.xyxy[0]
 
     if len(predictions) == 0:
