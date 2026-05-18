@@ -1,0 +1,53 @@
+name: samsam-baekgwa-prod
+
+services:
+  ai:
+    build:
+      context: ../services/ai
+    restart: unless-stopped
+    environment:
+      SAMSAM_MODEL_ROOT: /model_en
+      SAMSAM_YOLO_CONF: ${SAMSAM_YOLO_CONF:-0.25}
+      SAMSAM_YOLO_IOU: ${SAMSAM_YOLO_IOU:-0.45}
+      SAMSAM_YOLO_IMAGE_SIZE: ${SAMSAM_YOLO_IMAGE_SIZE:-640}
+    volumes:
+      - ../model_en:/model_en:ro
+    expose:
+      - "8000"
+
+  bff:
+    build:
+      context: ../services/bff
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      AI_SERVICE_URL: http://ai:8000
+      INSAMTONG_API_BASE_URL: ${INSAMTONG_API_BASE_URL:-https://insamtong.kr/openapi}
+      INSAMTONG_API_KEY: ${INSAMTONG_API_KEY:-}
+      PUBLIC_DATA_API_KEY: ${PUBLIC_DATA_API_KEY:-}
+    volumes:
+      - bff-data:/app/data
+    depends_on:
+      - ai
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - bff
+
+volumes:
+  bff-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "삼박사",
+    "slug": "samsam-baekgwa",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./samsam-i.png",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "kr.samsambaekgwa.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./samsam-i.png",
+        "backgroundColor": "#fffaf2"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:8080"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "삼박사 판독에 사용할 인삼 사진을 선택하기 위해 사진첩 접근 권한이 필요합니다."
+        }
+      ]
+    ]
+  }
+}

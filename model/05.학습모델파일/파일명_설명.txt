@@ -1,0 +1,2 @@
+Age_Grade_best.pt : 연근 및 등급 분류 모델
+Object_best.pt : 인삼 부위 탐지 모델

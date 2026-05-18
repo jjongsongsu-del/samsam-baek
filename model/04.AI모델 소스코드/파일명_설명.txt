@@ -1,0 +1,2 @@
+yolov5.zip : 모델소스코드
+convert_yolo.zip : 라벨링 데이터를 다크넷 포멧으로 변환 유틸
