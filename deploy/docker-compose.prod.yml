@@ -6,12 +6,12 @@ services:
       context: ../services/ai
     restart: unless-stopped
     environment:
-      SAMSAM_MODEL_ROOT: /model_en
+      SAMSAM_MODEL_ROOT: /model
       SAMSAM_YOLO_CONF: ${SAMSAM_YOLO_CONF:-0.25}
       SAMSAM_YOLO_IOU: ${SAMSAM_YOLO_IOU:-0.45}
       SAMSAM_YOLO_IMAGE_SIZE: ${SAMSAM_YOLO_IMAGE_SIZE:-640}
     volumes:
-      - ../model_en:/model_en:ro
+      - ../model:/model:ro
     expose:
       - "8000"
 

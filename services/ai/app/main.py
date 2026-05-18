@@ -15,10 +15,10 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="Samsam AI Inference API", version="0.2.0")
 
-MODEL_ROOT = Path(os.getenv("SAMSAM_MODEL_ROOT", "/model_en"))
-YOLOV5_ZIP = Path(os.getenv("SAMSAM_YOLOV5_ZIP", MODEL_ROOT / "yolov5" / "yolov5.zip"))
-AGE_GRADE_WEIGHTS = Path(os.getenv("SAMSAM_AGE_GRADE_WEIGHTS", MODEL_ROOT / "weights" / "Age_Grade_best.pt"))
-OBJECT_WEIGHTS = Path(os.getenv("SAMSAM_OBJECT_WEIGHTS", MODEL_ROOT / "weights" / "Object_best.pt"))
+MODEL_ROOT = Path(os.getenv("SAMSAM_MODEL_ROOT", "/model"))
+YOLOV5_ZIP = Path(os.getenv("SAMSAM_YOLOV5_ZIP", MODEL_ROOT / "04_ai_model_source" / "yolov5.zip"))
+AGE_GRADE_WEIGHTS = Path(os.getenv("SAMSAM_AGE_GRADE_WEIGHTS", MODEL_ROOT / "05_trained_model_files" / "Age_Grade_best.pt"))
+OBJECT_WEIGHTS = Path(os.getenv("SAMSAM_OBJECT_WEIGHTS", MODEL_ROOT / "05_trained_model_files" / "Object_best.pt"))
 YOLOV5_EXTRACT_DIR = Path(os.getenv("SAMSAM_YOLOV5_DIR", "/tmp/samsam-yolov5"))
 
 

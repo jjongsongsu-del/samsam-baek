@@ -35,5 +35,4 @@ services/ai/app/__pycache__/
 test_img/
 
 # Large local model image export; production uses model files instead.
-model/06 모델구축도커이미지/
-model_en/
+model/06_model_docker_image/

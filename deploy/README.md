@@ -4,9 +4,9 @@ This deployment uses English model paths to avoid Korean path encoding issues on
 
 Required model files:
 
-- `model_en/yolov5/yolov5.zip`
-- `model_en/weights/Age_Grade_best.pt`
-- `model_en/weights/Object_best.pt`
+- `model/04_ai_model_source/yolov5.zip`
+- `model/05_trained_model_files/Age_Grade_best.pt`
+- `model/05_trained_model_files/Object_best.pt`
 
 Run from the repository root:
 
