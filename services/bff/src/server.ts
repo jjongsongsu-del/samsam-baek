@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { z } from 'zod';
 import { config } from './config.js';
+import { loginWithSocial, socialLoginSchema } from './authStore.js';
 import {
   createEncyclopediaEntry,
   deleteEncyclopediaEntry,
@@ -32,6 +33,15 @@ app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'samsam-bff' });
+});
+
+app.post('/v1/auth/social', async (req, res, next) => {
+  try {
+    const body = socialLoginSchema.parse(req.body);
+    res.json(await loginWithSocial(body.provider, body.accessToken));
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/v1/prices/latest', async (req, res, next) => {

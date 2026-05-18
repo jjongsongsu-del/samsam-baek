@@ -4,4 +4,6 @@ export const config = {
   insamtongApiBaseUrl: process.env.INSAMTONG_API_BASE_URL ?? 'https://insamtong.kr/openapi',
   insamtongApiKey: process.env.INSAMTONG_API_KEY ?? '',
   publicDataApiKey: process.env.PUBLIC_DATA_API_KEY ?? '',
+  jwtSecret: process.env.JWT_SECRET ?? 'dev-only-change-me',
+  socialAuthMode: process.env.SOCIAL_AUTH_MODE === 'production' ? 'production' : 'mock',
 };

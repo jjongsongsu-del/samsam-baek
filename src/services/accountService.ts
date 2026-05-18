@@ -1,13 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const PROFILE_KEY = 'samsam.account.profile.v1';
 const USAGE_KEY = 'samsam.inspection.usage.v1';
+const AUTH_TOKEN_KEY = 'samsam.account.tokens.v1';
 
 export type SocialProvider = 'google' | 'kakao' | 'naver';
 
 export type AccountProfile = {
   mode: 'guest' | 'member';
+  id?: string;
   provider?: SocialProvider;
+  providerUserId?: string;
   nickname: string;
   email?: string;
   joinedAt?: string;
@@ -23,6 +27,12 @@ export type AccountState = {
   usage: DailyUsage;
   limit: number;
   remaining: number;
+};
+
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 };
 
 const getTodayKey = () => new Date().toISOString().slice(0, 10);
@@ -89,20 +99,39 @@ export async function consumeInspectionUse() {
   return { allowed: true, state: nextState };
 }
 
-export async function signInWithSocial(provider: SocialProvider): Promise<AccountState> {
-  const providerNames: Record<SocialProvider, string> = {
-    google: 'Google',
-    kakao: 'Kakao',
-    naver: 'Naver',
-  };
+export async function signInWithSocial(provider: SocialProvider, socialAccessToken = `mock:${provider}-tester`): Promise<AccountState> {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/social`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, accessToken: socialAccessToken }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || '로그인에 실패했습니다.');
+  }
+
+  const body = await response.json();
   const profile: AccountProfile = {
     mode: 'member',
+    id: body.user.id,
     provider,
-    nickname: `${providerNames[provider]} 회원`,
-    email: '',
-    joinedAt: new Date().toISOString(),
+    providerUserId: body.socialAccount.providerUserId,
+    nickname: body.user.nickname,
+    email: body.user.email ?? '',
+    joinedAt: body.user.createdAt,
   };
-  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  await Promise.all([
+    AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile)),
+    AsyncStorage.setItem(
+      AUTH_TOKEN_KEY,
+      JSON.stringify({
+        accessToken: body.accessToken,
+        refreshToken: body.refreshToken,
+        expiresIn: body.expiresIn,
+      } satisfies AuthTokens),
+    ),
+  ]);
   return loadAccountState();
 }
 
@@ -118,6 +147,6 @@ export async function updateAccountProfile(patch: Pick<AccountProfile, 'nickname
 }
 
 export async function signOutAccount(): Promise<AccountState> {
-  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(defaultProfile()));
+  await Promise.all([AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(defaultProfile())), AsyncStorage.removeItem(AUTH_TOKEN_KEY)]);
   return loadAccountState();
 }

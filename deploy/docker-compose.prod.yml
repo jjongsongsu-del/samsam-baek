@@ -25,6 +25,8 @@ services:
       INSAMTONG_API_BASE_URL: ${INSAMTONG_API_BASE_URL:-https://insamtong.kr/openapi}
       INSAMTONG_API_KEY: ${INSAMTONG_API_KEY:-}
       PUBLIC_DATA_API_KEY: ${PUBLIC_DATA_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      SOCIAL_AUTH_MODE: ${SOCIAL_AUTH_MODE:-mock}
     volumes:
       - bff-data:/app/data
     depends_on:

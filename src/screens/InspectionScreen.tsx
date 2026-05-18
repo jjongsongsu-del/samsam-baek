@@ -14,7 +14,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -24,11 +23,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import {
   consumeInspectionUse,
   loadAccountState,
-  signInWithSocial,
-  signOutAccount,
-  updateAccountProfile,
   type AccountState,
-  type SocialProvider,
 } from '../services/accountService';
 import {
   deleteInspectionRecord,
@@ -138,8 +133,6 @@ const InspectionScreen = ({ route, navigation }: any) => {
   const [tipIndex, setTipIndex] = useState(0);
   const [stageSize, setStageSize] = useState<StageSize>({ width: 1, height: 1 });
   const [accountState, setAccountState] = useState<AccountState | null>(null);
-  const [profileName, setProfileName] = useState('');
-  const [profileEmail, setProfileEmail] = useState('');
   const [inspectionError, setInspectionError] = useState<{ title: string; message: string; recoverable: boolean } | null>(null);
   const scanLine = useRef(new Animated.Value(0)).current;
   const cameraRef = useRef<any>(null);
@@ -214,8 +207,6 @@ const InspectionScreen = ({ route, navigation }: any) => {
   const refreshAccount = async () => {
     const state = await loadAccountState();
     setAccountState(state);
-    setProfileName(state.profile.nickname);
-    setProfileEmail(state.profile.email ?? '');
   };
 
   const setImageForSelection = (image: PendingImage) => {
@@ -576,19 +567,6 @@ const InspectionScreen = ({ route, navigation }: any) => {
   const hasUnclearResult = useMemo(() => (result ? isUnclearInspection(result) : false), [result]);
   const inspectionViewActive = activeView === 'source' || activeView === 'capture' || activeView === 'result';
 
-  const handleSocialSignIn = async (provider: SocialProvider) => {
-    setAccountState(await signInWithSocial(provider));
-  };
-
-  const handleSaveProfile = async () => {
-    setAccountState(await updateAccountProfile({ nickname: profileName, email: profileEmail }));
-    Alert.alert('내 정보 저장', '회원 정보가 저장되었습니다.');
-  };
-
-  const handleSignOut = async () => {
-    setAccountState(await signOutAccount());
-  };
-
   const renderViewSwitcher = () => (
     <View style={styles.switcher}>
       <TouchableOpacity
@@ -899,48 +877,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
           </View>
         </View>
 
-        {isMember ? (
-          <>
-            <Text style={styles.accountMeta}>가입 방식: {profile.provider?.toUpperCase() ?? 'SNS'}</Text>
-            <TextInput
-              value={profileName}
-              onChangeText={setProfileName}
-              placeholder="닉네임"
-              placeholderTextColor={colors.gray40}
-              style={styles.profileInput}
-            />
-            <TextInput
-              value={profileEmail}
-              onChangeText={setProfileEmail}
-              placeholder="이메일"
-              placeholderTextColor={colors.gray40}
-              style={styles.profileInput}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <View style={styles.accountActions}>
-              <TouchableOpacity style={styles.accountButton} onPress={handleSaveProfile}>
-                <Ionicons name="person" size={16} color={colors.primary60} />
-                <Text style={styles.accountButtonText}>내 정보 저장</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.accountButton, styles.deleteButton]} onPress={handleSignOut}>
-                <Ionicons name="log-out" size={16} color={colors.danger60} />
-                <Text style={styles.deleteText}>비회원 전환</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={styles.lightText}>SNS 회원가입을 하면 AI 판독을 하루 최대 100회까지 사용할 수 있습니다.</Text>
-            <View style={styles.socialRow}>
-              {(['google', 'kakao', 'naver'] as SocialProvider[]).map((provider) => (
-                <TouchableOpacity key={provider} style={styles.socialButton} onPress={() => handleSocialSignIn(provider)}>
-                  <Text style={styles.socialButtonText}>{provider.toUpperCase()}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </>
-        )}
+        <Text style={styles.accountMeta}>{isMember ? `${profile.provider?.toUpperCase() ?? 'SNS'} 회원` : '사용자 메뉴에서 소셜 계정을 연결할 수 있습니다.'}</Text>
       </Panel>
     );
   };

@@ -7,6 +7,7 @@ import InspectionScreen from '../screens/InspectionScreen';
 import EncyclopediaScreen from '../screens/EncyclopediaScreen';
 import MapScreen from '../screens/MapScreen';
 import GuideScreen from '../screens/GuideScreen';
+import UserScreen from '../screens/UserScreen';
 import { colors } from '../theme';
 
 export type RootTabParamList = {
@@ -16,6 +17,7 @@ export type RootTabParamList = {
   백과: undefined;
   지도: undefined;
   가이드: undefined;
+  사용자: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -27,6 +29,7 @@ const iconMap: Record<keyof RootTabParamList, [string, string]> = {
   백과: ['book', 'book-outline'],
   지도: ['map', 'map-outline'],
   가이드: ['ribbon', 'ribbon-outline'],
+  사용자: ['person', 'person-outline'],
 };
 
 const AppNavigator = () => {
@@ -59,6 +62,7 @@ const AppNavigator = () => {
       <Tab.Screen name="백과" component={EncyclopediaScreen} />
       <Tab.Screen name="지도" component={MapScreen} />
       <Tab.Screen name="가이드" component={GuideScreen} />
+      <Tab.Screen name="사용자" component={UserScreen} />
     </Tab.Navigator>
   );
 };
