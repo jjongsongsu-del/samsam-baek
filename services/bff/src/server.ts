@@ -16,7 +16,7 @@ import { getPriceGradeCode } from './ginsengPriceMap.js';
 import { getDetailedPriceHistory, getDetailedPrices, getLatestPrices, getPricePrediction } from './insamtongClient.js';
 
 const app = express();
-const AI_TIMEOUT_MS = 30000;
+const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS ?? 120000);
 
 class HttpError extends Error {
   status: number;
