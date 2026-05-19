@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -7,6 +8,7 @@ import { AppSurface } from '../components/AppSurface';
 import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { mapFallbackData } from '../data/mapFallbackData';
+import { loadAdminSession, type AdminSession } from '../services/adminAuthService';
 import { fetchMapData, importMapCsv, type MapCategory, type MapDataItem } from '../services/mapDataService';
 import { colors } from '../theme';
 
@@ -48,6 +50,7 @@ const MapScreen = () => {
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id ?? null);
   const [loading, setLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sourceMessage, setSourceMessage] = useState('로컬 기본 데이터');
 
@@ -78,7 +81,17 @@ const MapScreen = () => {
     loadData();
   }, [loadData]);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadAdminSession().then(setAdminSession);
+    }, []),
+  );
+
   const handleImportCsv = async () => {
+    if (!adminSession) {
+      Alert.alert('관리자 로그인 필요', '사용자 메뉴에서 관리자 로그인 후 CSV를 반영할 수 있습니다.');
+      return;
+    }
     setUploading(true);
     try {
       const picked = await DocumentPicker.getDocumentAsync({
@@ -90,7 +103,7 @@ const MapScreen = () => {
       }
       const asset = picked.assets[0];
       const csvBase64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
-      const result = await importMapCsv(category, asset.name, csvBase64);
+      const result = await importMapCsv(category, asset.name, csvBase64, adminSession.accessToken);
       Alert.alert('반영 완료', `${categoryLabel(result.category)} 데이터 ${result.imported.toLocaleString('ko-KR')}건을 반영했습니다.`);
       await loadData();
     } catch (error: any) {
@@ -167,13 +180,19 @@ const MapScreen = () => {
       {adminOpen ? (
         <Panel>
           <Text style={styles.adminTitle}>{selectedCategory.label} CSV 업로드</Text>
-          <Text style={styles.adminText}>
-            관리자가 최신 CSV를 선택한 뒤 반영하면 서버의 해당 분류 데이터가 교체됩니다. 현재 분류에 맞는 CSV를 선택해 주세요.
-          </Text>
-          <TouchableOpacity style={styles.importButton} onPress={handleImportCsv} disabled={uploading}>
-            <Ionicons name="document-attach" size={17} color={colors.white} />
-            <Text style={styles.importButtonText}>{uploading ? '반영 중' : 'CSV 선택 후 반영'}</Text>
-          </TouchableOpacity>
+          {adminSession ? (
+            <>
+              <Text style={styles.adminText}>
+                {adminSession.username} 관리자 계정으로 로그인되어 있습니다. 현재 분류에 맞는 CSV를 선택해 주세요.
+              </Text>
+              <TouchableOpacity style={styles.importButton} onPress={handleImportCsv} disabled={uploading}>
+                <Ionicons name="document-attach" size={17} color={colors.white} />
+                <Text style={styles.importButtonText}>{uploading ? '반영 중' : 'CSV 선택 후 반영'}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.adminText}>CSV 반영은 사용자 메뉴에서 관리자 로그인 후 사용할 수 있습니다.</Text>
+          )}
         </Panel>
       ) : null}
 

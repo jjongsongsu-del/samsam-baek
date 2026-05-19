@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { z } from 'zod';
 import { config } from './config.js';
+import { adminLoginSchema, loginAdmin, verifyAdminToken } from './adminAuth.js';
 import { loginWithSocial, socialLoginSchema } from './authStore.js';
 import {
   createEncyclopediaEntry,
@@ -40,6 +41,19 @@ app.post('/v1/auth/social', async (req, res, next) => {
   try {
     const body = socialLoginSchema.parse(req.body);
     res.json(await loginWithSocial(body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/v1/admin/auth/login', async (req, res, next) => {
+  try {
+    const body = adminLoginSchema.parse(req.body);
+    const session = loginAdmin(body);
+    if (!session) {
+      throw new HttpError(401, 'Invalid admin credentials');
+    }
+    res.json(session);
   } catch (error) {
     next(error);
   }
@@ -155,6 +169,11 @@ app.get('/v1/map-data', async (req, res, next) => {
 
 app.post('/v1/admin/map-data/import', async (req, res, next) => {
   try {
+    const authHeader = String(req.headers.authorization ?? '');
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : '';
+    if (!verifyAdminToken(token)) {
+      throw new HttpError(401, 'Admin login is required');
+    }
     const body = mapImportSchema.parse(req.body);
     res.json(await importMapData(body));
   } catch (error) {

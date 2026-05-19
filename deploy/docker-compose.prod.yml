@@ -31,6 +31,8 @@ services:
       KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
       KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-manager}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
     volumes:
       - bff-data:/app/data
     depends_on:

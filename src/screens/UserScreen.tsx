@@ -19,6 +19,7 @@ import {
   type AccountState,
   type SocialProvider,
 } from '../services/accountService';
+import { loadAdminSession, signInAdmin, signOutAdmin, type AdminSession } from '../services/adminAuthService';
 import { colors } from '../theme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -34,6 +35,10 @@ const UserScreen = () => {
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
+  const [adminUsername, setAdminUsername] = useState('manager');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
   const kakaoRedirectUri = useMemo(
     () => AuthSession.makeRedirectUri({ scheme: KAKAO_REDIRECT_SCHEME, path: KAKAO_REDIRECT_PATH }),
     [],
@@ -51,7 +56,9 @@ const UserScreen = () => {
 
   const refreshAccount = async () => {
     const state = await loadAccountState();
+    const admin = await loadAdminSession();
     setAccountState(state);
+    setAdminSession(admin);
     setProfileName(state.profile.nickname);
     setProfileEmail(state.profile.email ?? '');
   };
@@ -99,6 +106,25 @@ const UserScreen = () => {
 
   const handleSignOut = async () => {
     setAccountState(await signOutAccount());
+  };
+
+  const handleAdminSignIn = async () => {
+    setAdminLoading(true);
+    try {
+      const session = await signInAdmin(adminUsername.trim(), adminPassword);
+      setAdminSession(session);
+      setAdminPassword('');
+      Alert.alert('관리자 로그인 완료', '지도 메뉴에서 CSV 반영을 사용할 수 있습니다.');
+    } catch (error: any) {
+      Alert.alert('관리자 로그인 실패', error.message || '계정 정보를 확인해 주세요.');
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const handleAdminSignOut = async () => {
+    await signOutAdmin();
+    setAdminSession(null);
   };
 
   if (!accountState) {
@@ -182,6 +208,43 @@ const UserScreen = () => {
             </View>
           </Panel>
         )}
+
+        <Panel>
+          <Text style={styles.panelTitle}>관리자</Text>
+          {adminSession ? (
+            <>
+              <Text style={styles.body}>{adminSession.username} 계정으로 로그인되어 있습니다.</Text>
+              <Text style={styles.meta}>만료 {new Date(adminSession.expiresAt).toLocaleString('ko-KR')}</Text>
+              <TouchableOpacity style={[styles.accountButton, styles.adminLogoutButton]} onPress={handleAdminSignOut}>
+                <Ionicons name="lock-open" size={16} color={colors.primary60} />
+                <Text style={styles.accountButtonText}>관리자 로그아웃</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TextInput
+                value={adminUsername}
+                onChangeText={setAdminUsername}
+                placeholder="관리자 ID"
+                placeholderTextColor={colors.gray40}
+                style={styles.profileInput}
+                autoCapitalize="none"
+              />
+              <TextInput
+                value={adminPassword}
+                onChangeText={setAdminPassword}
+                placeholder="관리자 비밀번호"
+                placeholderTextColor={colors.gray40}
+                style={styles.profileInput}
+                secureTextEntry
+              />
+              <TouchableOpacity style={styles.socialButton} onPress={handleAdminSignIn} disabled={adminLoading}>
+                <Ionicons name="lock-closed" size={17} color={colors.white} />
+                <Text style={styles.socialButtonText}>{adminLoading ? '로그인 중' : '관리자 로그인'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </Panel>
       </ScrollView>
     </AppSurface>
   );
@@ -232,6 +295,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   accountButtonText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
+  adminLogoutButton: { marginTop: 12 },
   deleteButton: { borderColor: colors.danger5, backgroundColor: colors.danger5 },
   deleteText: { color: colors.danger60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
   socialStack: { gap: 10 },

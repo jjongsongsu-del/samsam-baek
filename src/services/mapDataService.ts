@@ -36,10 +36,10 @@ export async function fetchMapData(category: MapCategory, q?: string): Promise<M
   return Array.isArray(body.items) ? body.items : [];
 }
 
-export async function importMapCsv(category: MapCategory, fileName: string, csvBase64: string): Promise<MapImportResult> {
+export async function importMapCsv(category: MapCategory, fileName: string, csvBase64: string, adminToken: string): Promise<MapImportResult> {
   const response = await fetch(`${API_BASE_URL}/v1/admin/map-data/import`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
     body: JSON.stringify({ category, fileName, csvBase64 }),
   });
   if (!response.ok) {
