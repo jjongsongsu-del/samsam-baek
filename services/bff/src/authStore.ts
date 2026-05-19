@@ -105,6 +105,39 @@ function signJwt(payload: Record<string, unknown>, expiresInSeconds: number) {
   return `${unsigned}.${signature}`;
 }
 
+export function verifyAccessToken(token: string): { userId: string; provider?: SocialProvider } | undefined {
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return undefined;
+  }
+
+  const [encodedHeader, encodedBody, signature] = parts;
+  const unsigned = `${encodedHeader}.${encodedBody}`;
+  const expected = crypto.createHmac('sha256', config.jwtSecret).update(unsigned).digest('base64url');
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    return undefined;
+  }
+
+  let payload: any;
+  try {
+    payload = JSON.parse(Buffer.from(encodedBody, 'base64url').toString('utf8'));
+  } catch {
+    return undefined;
+  }
+  const provider = socialProviderSchema.safeParse(payload.provider);
+  if (typeof payload.exp !== 'number' || payload.exp < Math.floor(Date.now() / 1000)) {
+    return undefined;
+  }
+  if (typeof payload.sub !== 'string') {
+    return undefined;
+  }
+
+  return {
+    userId: payload.sub,
+    provider: provider.success ? provider.data : undefined,
+  };
+}
+
 async function verifyGoogleToken(accessToken: string): Promise<VerifiedSocialUser> {
   const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -167,6 +200,42 @@ async function exchangeKakaoAuthorizationCode(authorizationCode: string, redirec
   return String(body.access_token);
 }
 
+async function exchangeGoogleAuthorizationCode(authorizationCode: string, redirectUri?: string) {
+  const resolvedRedirectUri = redirectUri || config.googleRedirectUri;
+  if (!config.googleClientId) {
+    throw new Error('GOOGLE_CLIENT_ID is not configured');
+  }
+  if (!resolvedRedirectUri) {
+    throw new Error('GOOGLE_REDIRECT_URI is not configured');
+  }
+
+  const params = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: config.googleClientId,
+    redirect_uri: resolvedRedirectUri,
+    code: authorizationCode,
+  });
+  if (config.googleClientSecret) {
+    params.set('client_secret', config.googleClientSecret);
+  }
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google authorization code exchange failed: ${await response.text()}`);
+  }
+
+  const body: any = await response.json();
+  if (!body.access_token) {
+    throw new Error('Google token response did not include access_token');
+  }
+  return String(body.access_token);
+}
+
 async function verifyNaverToken(accessToken: string): Promise<VerifiedSocialUser> {
   const response = await fetch('https://openapi.naver.com/v1/nid/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -205,10 +274,13 @@ export async function loginWithSocial(input: z.infer<typeof socialLoginSchema>) 
   const provider = input.provider;
   let accessToken = input.accessToken;
   if (!accessToken && input.authorizationCode) {
-    if (provider !== 'kakao') {
-      throw new Error('authorizationCode login is currently supported for Kakao only');
+    if (provider === 'kakao') {
+      accessToken = await exchangeKakaoAuthorizationCode(input.authorizationCode, input.redirectUri);
+    } else if (provider === 'google') {
+      accessToken = await exchangeGoogleAuthorizationCode(input.authorizationCode, input.redirectUri);
+    } else {
+      throw new Error('authorizationCode login is not supported for this provider');
     }
-    accessToken = await exchangeKakaoAuthorizationCode(input.authorizationCode, input.redirectUri);
   }
   if (!accessToken) {
     throw new Error('accessToken is required');

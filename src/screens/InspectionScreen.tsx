@@ -22,7 +22,7 @@ import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
 import {
   consumeInspectionUse,
-  loadAccountState,
+  refreshServerAccountUsage,
   type AccountState,
 } from '../services/accountService';
 import {
@@ -205,7 +205,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
   };
 
   const refreshAccount = async () => {
-    const state = await loadAccountState();
+    const state = await refreshServerAccountUsage();
     setAccountState(state);
   };
 
@@ -465,7 +465,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
     setTipIndex(0);
 
     try {
-      const usageState = await loadAccountState();
+      const usageState = await refreshServerAccountUsage();
       setAccountState(usageState);
       if (usageState.usage.count >= usageState.limit) {
         Alert.alert(

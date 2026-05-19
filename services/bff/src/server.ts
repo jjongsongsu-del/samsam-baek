@@ -3,7 +3,7 @@ import express from 'express';
 import { z } from 'zod';
 import { config } from './config.js';
 import { adminLoginSchema, loginAdmin, verifyAdminToken } from './adminAuth.js';
-import { loginWithSocial, socialLoginSchema } from './authStore.js';
+import { loginWithSocial, socialLoginSchema, verifyAccessToken } from './authStore.js';
 import {
   createEncyclopediaEntry,
   deleteEncyclopediaEntry,
@@ -16,6 +16,7 @@ import {
 import { getPriceGradeCode } from './ginsengPriceMap.js';
 import { getDetailedPriceHistory, getDetailedPrices, getLatestPrices, getPricePrediction } from './insamtongClient.js';
 import { importMapData, listMapData, mapCategorySchema, mapImportSchema } from './mapDataStore.js';
+import { getUserDailyUsage, listAllDiagnoses, listUserDiagnoses, recordDiagnosis } from './diagnosisStore.js';
 
 const app = express();
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS ?? 120000);
@@ -54,6 +55,57 @@ app.post('/v1/admin/auth/login', async (req, res, next) => {
       throw new HttpError(401, 'Invalid admin credentials');
     }
     res.json(session);
+  } catch (error) {
+    next(error);
+  }
+});
+
+function readBearer(req: express.Request) {
+  const authHeader = String(req.headers.authorization ?? '');
+  return authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : '';
+}
+
+function requireUser(req: express.Request) {
+  const token = readBearer(req);
+  const auth = token ? verifyAccessToken(token) : undefined;
+  if (!auth) {
+    throw new HttpError(401, 'Login is required');
+  }
+  return auth;
+}
+
+app.get('/v1/me/usage', async (req, res, next) => {
+  try {
+    const auth = requireUser(req);
+    const usage = await getUserDailyUsage(auth.userId);
+    res.json({
+      usage,
+      limit: 100,
+      remaining: Math.max(100 - usage.count, 0),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/v1/me/diagnoses', async (req, res, next) => {
+  try {
+    const auth = requireUser(req);
+    const limit = Math.min(Number(req.query.limit ?? 50), 200);
+    res.json({ items: await listUserDiagnoses(auth.userId, limit) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/v1/admin/diagnoses', async (req, res, next) => {
+  try {
+    const token = readBearer(req);
+    if (!verifyAdminToken(token)) {
+      throw new HttpError(401, 'Admin login is required');
+    }
+    const limit = Math.min(Number(req.query.limit ?? 200), 1000);
+    res.json({ items: await listAllDiagnoses(limit) });
   } catch (error) {
     next(error);
   }
@@ -189,6 +241,7 @@ const diagnosisRequestSchema = z.object({
 app.post('/v1/diagnoses/ginseng', async (req, res, next) => {
   try {
     const body = diagnosisRequestSchema.parse(req.body);
+    const auth = readBearer(req) ? verifyAccessToken(readBearer(req)) : undefined;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
     let aiResponse: Response;
@@ -225,12 +278,27 @@ app.post('/v1/diagnoses/ginseng', async (req, res, next) => {
 
     const prediction = await aiResponse.json();
     const priceGradeCode = getPriceGradeCode(prediction.year, prediction.grade);
-
-    res.json({
+    const result = {
       ...prediction,
       priceGradeCode,
       disclaimer: 'AI 판독 결과는 참고용이며 공식 감정이나 거래 보증이 아닙니다.',
-    });
+    };
+
+    if (auth) {
+      await recordDiagnosis({
+        userId: auth.userId,
+        provider: auth.provider,
+        source: body.source,
+        result: {
+          year: String(result.year ?? result.age ?? '판독 불가'),
+          grade: String(result.grade ?? '판독 불가'),
+          confidence: typeof result.confidence === 'number' ? result.confidence : undefined,
+          priceGradeCode,
+        },
+      });
+    }
+
+    res.json(result);
   } catch (error) {
     next(error);
   }

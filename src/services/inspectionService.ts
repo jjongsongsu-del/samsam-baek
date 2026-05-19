@@ -1,3 +1,5 @@
+import { loadAuthTokens } from './accountService';
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 export type DetectionBox = {
@@ -54,9 +56,13 @@ export async function inspectGinsengImage(base64Image: string, source = 'mobile-
   let response: Response;
 
   try {
+    const tokens = await loadAuthTokens();
     response = await fetch(`${API_BASE_URL}/v1/diagnoses/ginseng`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
+      },
       signal: controller.signal,
       body: JSON.stringify({
         imageBase64: base64Image,

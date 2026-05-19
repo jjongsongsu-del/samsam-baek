@@ -8,10 +8,13 @@ import { AppSurface } from '../components/AppSurface';
 import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
 import {
-  loadAccountState,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_REDIRECT_PATH,
   KAKAO_REDIRECT_PATH,
   KAKAO_REDIRECT_SCHEME,
   KAKAO_REST_API_KEY,
+  refreshServerAccountUsage,
+  signInWithGoogleAuthorizationCode,
   signInWithKakaoAuthorizationCode,
   signInWithSocial,
   signOutAccount,
@@ -43,6 +46,10 @@ const UserScreen = () => {
     () => AuthSession.makeRedirectUri({ scheme: KAKAO_REDIRECT_SCHEME, path: KAKAO_REDIRECT_PATH }),
     [],
   );
+  const googleRedirectUri = useMemo(
+    () => AuthSession.makeRedirectUri({ scheme: KAKAO_REDIRECT_SCHEME, path: GOOGLE_REDIRECT_PATH }),
+    [],
+  );
   const [, , promptKakaoAsync] = AuthSession.useAuthRequest(
     {
       clientId: KAKAO_REST_API_KEY,
@@ -53,9 +60,20 @@ const UserScreen = () => {
       authorizationEndpoint: 'https://kauth.kakao.com/oauth/authorize',
     },
   );
+  const [, , promptGoogleAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      redirectUri: googleRedirectUri,
+      responseType: AuthSession.ResponseType.Code,
+      scopes: ['openid', 'profile', 'email'],
+    },
+    {
+      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    },
+  );
 
   const refreshAccount = async () => {
-    const state = await loadAccountState();
+    const state = await refreshServerAccountUsage();
     const admin = await loadAdminSession();
     setAccountState(state);
     setAdminSession(admin);
@@ -89,6 +107,21 @@ const UserScreen = () => {
           throw new Error('Kakao authorization code was not returned.');
         }
         setAccountState(await signInWithKakaoAuthorizationCode(code, kakaoRedirectUri));
+        return;
+      }
+      if (provider === 'google') {
+        if (!GOOGLE_CLIENT_ID) {
+          throw new Error('EXPO_PUBLIC_GOOGLE_CLIENT_ID is not configured.');
+        }
+        const result = await promptGoogleAsync();
+        if (result.type !== 'success') {
+          return;
+        }
+        const code = result.params.code;
+        if (!code) {
+          throw new Error('Google authorization code was not returned.');
+        }
+        setAccountState(await signInWithGoogleAuthorizationCode(code, googleRedirectUri));
         return;
       }
       setAccountState(await signInWithSocial(provider));

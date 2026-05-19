@@ -2,8 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 export const KAKAO_REST_API_KEY = process.env.EXPO_PUBLIC_KAKAO_REST_API_KEY ?? '';
+export const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '';
 export const KAKAO_REDIRECT_SCHEME = 'kr.samsambaekgwa.app';
 export const KAKAO_REDIRECT_PATH = 'oauth/kakao';
+export const GOOGLE_REDIRECT_PATH = 'oauth/google';
 const PROFILE_KEY = 'samsam.account.profile.v1';
 const USAGE_KEY = 'samsam.inspection.usage.v1';
 const AUTH_TOKEN_KEY = 'samsam.account.tokens.v1';
@@ -119,6 +121,53 @@ export async function consumeInspectionUse() {
   return { allowed: true, state: nextState };
 }
 
+export async function loadAuthTokens(): Promise<AuthTokens | undefined> {
+  const raw = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+  if (!raw) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.accessToken === 'string') {
+      return parsed;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+export async function refreshServerAccountUsage(): Promise<AccountState> {
+  const state = await loadAccountState();
+  if (state.profile.mode !== 'member') {
+    return state;
+  }
+
+  const tokens = await loadAuthTokens();
+  if (!tokens?.accessToken) {
+    return state;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/me/usage`, {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+    if (!response.ok) {
+      return state;
+    }
+    const body = await response.json();
+    const usage = {
+      date: String(body.usage?.date ?? state.usage.date),
+      count: Number(body.usage?.count ?? state.usage.count),
+    };
+    await AsyncStorage.setItem(usageKeyForProfile(state.profile), JSON.stringify(usage));
+    return loadAccountState();
+  } catch {
+    return state;
+  }
+}
+
 async function persistSocialLogin(provider: SocialProvider, body: any): Promise<AccountState> {
   const profile: AccountProfile = {
     mode: 'member',
@@ -177,6 +226,26 @@ export async function signInWithKakaoAuthorizationCode(authorizationCode: string
 
   const body = await response.json();
   return persistSocialLogin('kakao', body);
+}
+
+export async function signInWithGoogleAuthorizationCode(authorizationCode: string, redirectUri: string): Promise<AccountState> {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/social`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      provider: 'google',
+      authorizationCode,
+      redirectUri,
+    }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || 'Google login failed.');
+  }
+
+  const body = await response.json();
+  return persistSocialLogin('google', body);
 }
 
 export async function updateAccountProfile(patch: Pick<AccountProfile, 'nickname' | 'email'>): Promise<AccountState> {

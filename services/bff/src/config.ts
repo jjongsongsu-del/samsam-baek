@@ -9,6 +9,9 @@ export const config = {
   kakaoRestApiKey: process.env.KAKAO_REST_API_KEY ?? '',
   kakaoRedirectUri: process.env.KAKAO_REDIRECT_URI ?? '',
   kakaoClientSecret: process.env.KAKAO_CLIENT_SECRET ?? '',
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? '',
   adminUsername: process.env.ADMIN_USERNAME ?? 'manager',
   adminPassword: process.env.ADMIN_PASSWORD ?? 'admin1234',
 };
