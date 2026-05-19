@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "삼박사",
+    "name": "삼삼백과",
     "slug": "samsam-baekgwa",
+    "scheme": "kr.samsambaekgwa.app",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./samsam-i.png",
@@ -32,7 +33,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "삼박사 판독에 사용할 인삼 사진을 선택하기 위해 사진첩 접근 권한이 필요합니다."
+          "photosPermission": "삼삼백과 판독에 사용할 인삼 사진을 선택하기 위해 사진첩 접근 권한이 필요합니다."
         }
       ]
     ]

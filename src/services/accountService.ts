@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+export const KAKAO_REST_API_KEY = process.env.EXPO_PUBLIC_KAKAO_REST_API_KEY ?? '';
+export const KAKAO_REDIRECT_SCHEME = 'kr.samsambaekgwa.app';
+export const KAKAO_REDIRECT_PATH = 'oauth/kakao';
 const PROFILE_KEY = 'samsam.account.profile.v1';
 const USAGE_KEY = 'samsam.inspection.usage.v1';
 const AUTH_TOKEN_KEY = 'samsam.account.tokens.v1';
@@ -99,19 +102,7 @@ export async function consumeInspectionUse() {
   return { allowed: true, state: nextState };
 }
 
-export async function signInWithSocial(provider: SocialProvider, socialAccessToken = `mock:${provider}-tester`): Promise<AccountState> {
-  const response = await fetch(`${API_BASE_URL}/v1/auth/social`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider, accessToken: socialAccessToken }),
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || '로그인에 실패했습니다.');
-  }
-
-  const body = await response.json();
+async function persistSocialLogin(provider: SocialProvider, body: any): Promise<AccountState> {
   const profile: AccountProfile = {
     mode: 'member',
     id: body.user.id,
@@ -133,6 +124,42 @@ export async function signInWithSocial(provider: SocialProvider, socialAccessTok
     ),
   ]);
   return loadAccountState();
+}
+
+export async function signInWithSocial(provider: SocialProvider, socialAccessToken = `mock:${provider}-tester`): Promise<AccountState> {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/social`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, accessToken: socialAccessToken }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || '로그인에 실패했습니다.');
+  }
+
+  const body = await response.json();
+  return persistSocialLogin(provider, body);
+}
+
+export async function signInWithKakaoAuthorizationCode(authorizationCode: string, redirectUri: string): Promise<AccountState> {
+  const response = await fetch(`${API_BASE_URL}/v1/auth/social`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      provider: 'kakao',
+      authorizationCode,
+      redirectUri,
+    }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || 'Kakao login failed.');
+  }
+
+  const body = await response.json();
+  return persistSocialLogin('kakao', body);
 }
 
 export async function updateAccountProfile(patch: Pick<AccountProfile, 'nickname' | 'email'>): Promise<AccountState> {

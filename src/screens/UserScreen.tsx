@@ -1,12 +1,18 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppSurface } from '../components/AppSurface';
 import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
 import {
   loadAccountState,
+  KAKAO_REDIRECT_PATH,
+  KAKAO_REDIRECT_SCHEME,
+  KAKAO_REST_API_KEY,
+  signInWithKakaoAuthorizationCode,
   signInWithSocial,
   signOutAccount,
   updateAccountProfile,
@@ -14,6 +20,8 @@ import {
   type SocialProvider,
 } from '../services/accountService';
 import { colors } from '../theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const providerLabels: Record<SocialProvider, string> = {
   naver: 'NAVER',
@@ -26,6 +34,20 @@ const UserScreen = () => {
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
+  const kakaoRedirectUri = useMemo(
+    () => AuthSession.makeRedirectUri({ scheme: KAKAO_REDIRECT_SCHEME, path: KAKAO_REDIRECT_PATH }),
+    [],
+  );
+  const [, , promptKakaoAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: KAKAO_REST_API_KEY,
+      redirectUri: kakaoRedirectUri,
+      responseType: AuthSession.ResponseType.Code,
+    },
+    {
+      authorizationEndpoint: 'https://kauth.kakao.com/oauth/authorize',
+    },
+  );
 
   const refreshAccount = async () => {
     const state = await loadAccountState();
@@ -47,6 +69,21 @@ const UserScreen = () => {
   const handleSocialSignIn = async (provider: SocialProvider) => {
     setLoadingProvider(provider);
     try {
+      if (provider === 'kakao') {
+        if (!KAKAO_REST_API_KEY) {
+          throw new Error('EXPO_PUBLIC_KAKAO_REST_API_KEY is not configured.');
+        }
+        const result = await promptKakaoAsync();
+        if (result.type !== 'success') {
+          return;
+        }
+        const code = result.params.code;
+        if (!code) {
+          throw new Error('Kakao authorization code was not returned.');
+        }
+        setAccountState(await signInWithKakaoAuthorizationCode(code, kakaoRedirectUri));
+        return;
+      }
       setAccountState(await signInWithSocial(provider));
     } catch (error: any) {
       Alert.alert('로그인 실패', error.message || '잠시 후 다시 시도해 주세요.');

@@ -14,6 +14,7 @@ import {
 } from './encyclopediaStore.js';
 import { getPriceGradeCode } from './ginsengPriceMap.js';
 import { getDetailedPriceHistory, getDetailedPrices, getLatestPrices, getPricePrediction } from './insamtongClient.js';
+import { importMapData, listMapData, mapCategorySchema, mapImportSchema } from './mapDataStore.js';
 
 const app = express();
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS ?? 120000);
@@ -137,6 +138,25 @@ app.post('/v1/encyclopedia/assistant', async (req, res, next) => {
     const entries = await readEncyclopediaEntries();
     const scopedEntries = body.entryId ? entries.filter((entry) => entry.id === body.entryId) : entries;
     res.json({ answer: explainWithSambaksa(body.question, scopedEntries.length ? scopedEntries : entries) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/v1/map-data', async (req, res, next) => {
+  try {
+    const category = req.query.category ? mapCategorySchema.parse(req.query.category) : undefined;
+    const q = req.query.q ? String(req.query.q) : undefined;
+    res.json({ items: await listMapData({ category, q }) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/v1/admin/map-data/import', async (req, res, next) => {
+  try {
+    const body = mapImportSchema.parse(req.body);
+    res.json(await importMapData(body));
   } catch (error) {
     next(error);
   }

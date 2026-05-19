@@ -82,7 +82,7 @@ const HomeScreen = ({ navigation }: any) => {
             <Image source={mascotImage} style={styles.logoImage} resizeMode="contain" />
           </View>
           <View>
-            <Text style={styles.brand}>삼박사</Text>
+            <Text style={styles.brand}>삼삼백과</Text>
             <Text style={styles.brandSub}>AI Ginseng Encyclopedia</Text>
           </View>
         </View>

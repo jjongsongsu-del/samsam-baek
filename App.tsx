@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
 import { colors } from './src/theme';
@@ -11,7 +12,7 @@ function LaunchScreen() {
   return (
     <View style={styles.launch}>
       <Image source={mascotImage} style={styles.launchMascot} resizeMode="contain" />
-      <Text style={styles.launchTitle}>삼박사</Text>
+      <Text style={styles.launchTitle}>삼삼백과</Text>
       <Text style={styles.launchText}>인삼 판독 준비 중</Text>
     </View>
   );
@@ -35,10 +36,12 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <AppNavigator />
-      <StatusBar style="dark" />
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <AppNavigator />
+        <StatusBar style="dark" />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 
