@@ -198,7 +198,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
     };
   }, [loading, loadingMessage, scanLine]);
 
-  const scanTranslateY = scanLine.interpolate({ inputRange: [0, 1], outputRange: [0, 206] });
+  const progressTranslateX = scanLine.interpolate({ inputRange: [0, 1], outputRange: [-120, 260] });
 
   const refreshHistory = async () => {
     setHistory(await loadInspectionHistory());
@@ -263,6 +263,32 @@ const InspectionScreen = ({ route, navigation }: any) => {
     });
   };
 
+  const getSelectionPointFromStage = useCallback(
+    (locationX: number, locationY: number) => {
+      if (imageFrame.width <= 1 || imageFrame.height <= 1) {
+        return null;
+      }
+
+      const x = (locationX - imageFrame.left) / imageFrame.width;
+      const y = (locationY - imageFrame.top) / imageFrame.height;
+      if (x < 0 || x > 1 || y < 0 || y > 1) {
+        return null;
+      }
+
+      return { x, y };
+    },
+    [imageFrame.height, imageFrame.left, imageFrame.top, imageFrame.width],
+  );
+
+  const isPointInsideSelection = useCallback(
+    (point: { x: number; y: number }) =>
+      point.x >= selection.x &&
+      point.x <= selection.x + selection.width &&
+      point.y >= selection.y &&
+      point.y <= selection.y + selection.height,
+    [selection.height, selection.width, selection.x, selection.y],
+  );
+
   const resizeSelection = (delta: number) => {
     updateSelection({
       x: selection.x - delta / 2,
@@ -318,12 +344,18 @@ const InspectionScreen = ({ route, navigation }: any) => {
           gestureStartSelection.current = selection;
         },
         onPanResponderMove: (_, gesture) => {
+          if (imageFrame.width <= 1 || imageFrame.height <= 1) {
+            return;
+          }
+
           const start = gestureStartSelection.current;
           updateSelection({
             x: start.x + gesture.dx / imageFrame.width,
             y: start.y + gesture.dy / imageFrame.height,
           });
         },
+        onPanResponderTerminationRequest: () => false,
+        onShouldBlockNativeResponder: () => true,
       }),
     [imageFrame.height, imageFrame.width, selection],
   );
@@ -336,9 +368,74 @@ const InspectionScreen = ({ route, navigation }: any) => {
         gestureStartSelection.current = selection;
       },
       onPanResponderMove: (_, gesture) => {
+        if (imageFrame.width <= 1 || imageFrame.height <= 1) {
+          return;
+        }
+
         updateSelectionFromHandle(handle, gesture.dx / imageFrame.width, gesture.dy / imageFrame.height);
       },
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
     });
+
+  const stageSelectionResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: (event) => {
+          if (!pendingImage) {
+            return false;
+          }
+
+          const point = getSelectionPointFromStage(event.nativeEvent.locationX, event.nativeEvent.locationY);
+          return !!point && !isPointInsideSelection(point);
+        },
+        onMoveShouldSetPanResponder: (event) => {
+          if (!pendingImage) {
+            return false;
+          }
+
+          const point = getSelectionPointFromStage(event.nativeEvent.locationX, event.nativeEvent.locationY);
+          return !!point && !isPointInsideSelection(point);
+        },
+        onPanResponderGrant: (event) => {
+          const point = getSelectionPointFromStage(event.nativeEvent.locationX, event.nativeEvent.locationY);
+          if (!point) {
+            return;
+          }
+
+          const next = {
+            x: clamp(point.x - selection.width / 2, 0, 1 - selection.width),
+            y: clamp(point.y - selection.height / 2, 0, 1 - selection.height),
+            width: selection.width,
+            height: selection.height,
+          };
+          gestureStartSelection.current = next;
+          updateSelection(next);
+        },
+        onPanResponderMove: (_, gesture) => {
+          if (imageFrame.width <= 1 || imageFrame.height <= 1) {
+            return;
+          }
+
+          const start = gestureStartSelection.current;
+          updateSelection({
+            x: start.x + gesture.dx / imageFrame.width,
+            y: start.y + gesture.dy / imageFrame.height,
+          });
+        },
+        onPanResponderTerminationRequest: () => false,
+        onShouldBlockNativeResponder: () => true,
+      }),
+    [
+      getSelectionPointFromStage,
+      imageFrame.height,
+      imageFrame.width,
+      isPointInsideSelection,
+      pendingImage,
+      selection.height,
+      selection.width,
+    ],
+  );
 
   const resizeResponders = useMemo(
     () => ({
@@ -395,7 +492,11 @@ const InspectionScreen = ({ route, navigation }: any) => {
         [{ crop }],
         { base64: true, compress: 0.82, format: ImageManipulator.SaveFormat.JPEG },
       );
-      const base64 = cropped.base64 ?? pendingImage.base64;
+      if (!cropped.base64) {
+        throw new Error('선택한 영역 이미지를 만들지 못했습니다. 범위를 다시 조정한 뒤 시도해 주세요.');
+      }
+
+      const base64 = cropped.base64;
       const inspection = await inspectGinsengImage(base64, pendingImage.source);
       let price: PricePrediction | undefined;
       try {
@@ -618,16 +719,11 @@ const InspectionScreen = ({ route, navigation }: any) => {
             <Text style={styles.loadingText}>{loading ? TIPS[tipIndex] : '잠시만 기다려 주세요. 사진이 크면 불러오는 데 시간이 걸릴 수 있습니다.'}</Text>
           </View>
         </View>
-        <View style={styles.scanPreview}>
-          {photoUri || pendingImage?.uri ? <Image source={{ uri: photoUri ?? pendingImage?.uri }} style={styles.scanPreviewImage} /> : null}
-          <View style={styles.scanShade} />
-          <View style={styles.scanGrid}>
-            <View style={styles.scanGridLine} />
-            <View style={styles.scanGridLine} />
-            <View style={styles.scanGridLine} />
+        <View style={styles.progressPanel}>
+          <View style={styles.progressTrack}>
+            <Animated.View style={[styles.progressFill, { transform: [{ translateX: progressTranslateX }] }]} />
           </View>
-          <View style={styles.scanFrame} />
-          <Animated.View style={[styles.scanBeam, { transform: [{ translateY: scanTranslateY }] }]} />
+          <Text style={styles.progressText}>AI 판독을 진행 중입니다</Text>
         </View>
       </Panel>
     );
@@ -678,6 +774,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
         <Text style={styles.panelTitle}>판독 대상 범위 선택</Text>
         <Text style={styles.helperText}>파란 박스 안쪽을 끌면 이동하고, 네 변이나 모서리를 끌면 크기를 자유롭게 조절할 수 있습니다.</Text>
         <View
+          {...stageSelectionResponder.panHandlers}
           style={styles.selectionStage}
           onLayout={(event) => {
             const { width, height } = event.nativeEvent.layout;
@@ -1338,47 +1435,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   axisButtonText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
-  scanPreview: {
-    height: 220,
-    borderRadius: 8,
+  progressPanel: {
+    marginTop: 10,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
-    backgroundColor: colors.gray100,
-    marginTop: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
-  scanPreviewImage: { width: '100%', height: '100%' },
-  scanShade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(2, 18, 32, 0.24)',
+  progressFill: {
+    width: 120,
+    height: '100%',
+    borderRadius: 5,
+    backgroundColor: colors.mint,
   },
-  scanGrid: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-evenly',
-  },
-  scanGridLine: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-  },
-  scanFrame: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    top: 18,
-    bottom: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.62)',
-    borderRadius: 8,
-  },
-  scanBeam: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 22,
-    backgroundColor: 'rgba(45, 212, 191, 0.82)',
-    shadowColor: colors.primary50,
-    shadowOpacity: 0.7,
-    shadowRadius: 12,
-  },
+  progressText: { color: colors.muted, fontSize: 12, lineHeight: 18, fontWeight: '700' },
   loadingHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   loadingMascot: { width: 58, height: 70 },
   loadingCopy: { flex: 1 },

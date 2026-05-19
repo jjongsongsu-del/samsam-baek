@@ -171,28 +171,24 @@ const MapScreen = () => {
         ) : null}
       </View>
 
-      <TouchableOpacity style={styles.adminToggle} onPress={() => setAdminOpen((value) => !value)}>
-        <Ionicons name="cloud-upload-outline" size={18} color={colors.primary60} />
-        <Text style={styles.adminToggleText}>관리자 CSV 반영</Text>
-        <Ionicons name={adminOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.primary60} />
-      </TouchableOpacity>
+      {adminSession ? (
+        <TouchableOpacity style={styles.adminToggle} onPress={() => setAdminOpen((value) => !value)}>
+          <Ionicons name="cloud-upload-outline" size={18} color={colors.primary60} />
+          <Text style={styles.adminToggleText}>관리자 CSV 반영</Text>
+          <Ionicons name={adminOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.primary60} />
+        </TouchableOpacity>
+      ) : null}
 
-      {adminOpen ? (
+      {adminSession && adminOpen ? (
         <Panel>
           <Text style={styles.adminTitle}>{selectedCategory.label} CSV 업로드</Text>
-          {adminSession ? (
-            <>
-              <Text style={styles.adminText}>
-                {adminSession.username} 관리자 계정으로 로그인되어 있습니다. 현재 분류에 맞는 CSV를 선택해 주세요.
-              </Text>
-              <TouchableOpacity style={styles.importButton} onPress={handleImportCsv} disabled={uploading}>
-                <Ionicons name="document-attach" size={17} color={colors.white} />
-                <Text style={styles.importButtonText}>{uploading ? '반영 중' : 'CSV 선택 후 반영'}</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <Text style={styles.adminText}>CSV 반영은 사용자 메뉴에서 관리자 로그인 후 사용할 수 있습니다.</Text>
-          )}
+          <Text style={styles.adminText}>
+            {adminSession.username} 관리자 계정으로 로그인되어 있습니다. 현재 분류에 맞는 CSV를 선택해 주세요.
+          </Text>
+          <TouchableOpacity style={styles.importButton} onPress={handleImportCsv} disabled={uploading}>
+            <Ionicons name="document-attach" size={17} color={colors.white} />
+            <Text style={styles.importButtonText}>{uploading ? '반영 중' : 'CSV 선택 후 반영'}</Text>
+          </TouchableOpacity>
         </Panel>
       ) : null}
 
