@@ -892,11 +892,45 @@ const InspectionScreen = ({ route, navigation }: any) => {
   };
 
   const renderPricePanel = (price?: PricePrediction) => {
+    if (price?.latestMarketPrice?.latestPrice) {
+      const market = price.latestMarketPrice;
+      const latestPrice = Number(market.latestPrice);
+      const diff = market.diffPreviousTradePrice ?? 0;
+      const rate = market.ratePreviousTradePrice;
+      return (
+        <Panel tone="light">
+          <View style={styles.priceHeader}>
+            <View>
+              <Text style={styles.lightTitle}>인삼통 최근 시세</Text>
+              <Text style={styles.lightText}>
+                {market.category} / {market.grade}
+                {market.description ? ` · ${market.description}` : ''} · {market.unit}
+              </Text>
+              <Text style={styles.lightText}>최근 거래일 {market.day}</Text>
+            </View>
+            <Text style={styles.priceValue}>{latestPrice.toLocaleString('ko-KR')}원</Text>
+          </View>
+          <View style={styles.quarterRow}>
+            <View style={styles.quarterItem}>
+              <Text style={styles.quarterLabel}>직전 거래 대비</Text>
+              <Text style={diff > 0 ? styles.upText : diff < 0 ? styles.downText : styles.flatText}>
+                {diff === 0 ? '변동 없음' : `${diff > 0 ? '+' : ''}${Math.round(diff).toLocaleString('ko-KR')}원`}
+              </Text>
+            </View>
+            <View style={styles.quarterItem}>
+              <Text style={styles.quarterLabel}>{market.previousTradeDay ?? '이전 거래일'}</Text>
+              <Text style={styles.quarterValue}>{rate != null ? `${rate}%` : '-'}</Text>
+            </View>
+          </View>
+        </Panel>
+      );
+    }
+
     if (!price?.quarters?.length) {
       return (
         <Panel tone="light">
           <Text style={styles.lightTitle}>연계 시세</Text>
-          <Text style={styles.lightText}>판독 등급과 연결된 가격 정보가 아직 없습니다.</Text>
+          <Text style={styles.lightText}>판독 등급과 연결된 인삼통 최근 시세가 아직 없습니다.</Text>
         </Panel>
       );
     }
@@ -906,7 +940,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
       <Panel tone="light">
         <View style={styles.priceHeader}>
           <View>
-            <Text style={styles.lightTitle}>연계 시세</Text>
+            <Text style={styles.lightTitle}>예측 시세</Text>
             <Text style={styles.lightText}>가격 등급 코드 {price.selectedGrade}</Text>
           </View>
           <Text style={styles.priceValue}>{current.avgPc.toLocaleString('ko-KR')}원</Text>
@@ -1497,6 +1531,9 @@ const styles = StyleSheet.create({
   quarterItem: { flex: 1, backgroundColor: colors.gray0, borderRadius: 6, borderWidth: 1, borderColor: colors.secondary10, padding: 10 },
   quarterLabel: { color: colors.gray60, fontSize: 12, lineHeight: 18, fontWeight: '700' },
   quarterValue: { color: colors.ink, fontSize: 15, lineHeight: 23, fontWeight: '700', marginTop: 4 },
+  upText: { color: colors.danger60, fontSize: 15, lineHeight: 23, fontWeight: '700', marginTop: 4 },
+  downText: { color: colors.primary60, fontSize: 15, lineHeight: 23, fontWeight: '700', marginTop: 4 },
+  flatText: { color: colors.gray60, fontSize: 15, lineHeight: 23, fontWeight: '700', marginTop: 4 },
   actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   actionButton: {
     flexGrow: 1,

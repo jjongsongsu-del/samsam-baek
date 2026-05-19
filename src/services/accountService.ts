@@ -47,9 +47,17 @@ const defaultProfile = (): AccountProfile => ({
 
 const limitForProfile = (profile: AccountProfile) => (profile.mode === 'member' ? 100 : 10);
 
+const usageKeyForProfile = (profile: AccountProfile) => {
+  if (profile.mode === 'member' && profile.provider && profile.providerUserId) {
+    return `${USAGE_KEY}.${profile.provider}.${profile.providerUserId}`;
+  }
+
+  return `${USAGE_KEY}.guest`;
+};
+
 export async function loadAccountState(): Promise<AccountState> {
   const today = getTodayKey();
-  const [rawProfile, rawUsage] = await Promise.all([AsyncStorage.getItem(PROFILE_KEY), AsyncStorage.getItem(USAGE_KEY)]);
+  const rawProfile = await AsyncStorage.getItem(PROFILE_KEY);
 
   let profile = defaultProfile();
   let usage: DailyUsage = { date: today, count: 0 };
@@ -65,9 +73,16 @@ export async function loadAccountState(): Promise<AccountState> {
     profile = defaultProfile();
   }
 
+  const usageKey = usageKeyForProfile(profile);
+  const [rawUsage, legacyRawUsage] = await Promise.all([
+    AsyncStorage.getItem(usageKey),
+    usageKey === `${USAGE_KEY}.guest` ? AsyncStorage.getItem(USAGE_KEY) : Promise.resolve(null),
+  ]);
+
   try {
-    if (rawUsage) {
-      const parsed = JSON.parse(rawUsage);
+    const raw = rawUsage ?? legacyRawUsage;
+    if (raw) {
+      const parsed = JSON.parse(raw);
       if (parsed?.date === today && typeof parsed?.count === 'number') {
         usage = { date: today, count: parsed.count };
       }
@@ -78,7 +93,9 @@ export async function loadAccountState(): Promise<AccountState> {
 
   if (usage.date !== today) {
     usage = { date: today, count: 0 };
-    await AsyncStorage.setItem(USAGE_KEY, JSON.stringify(usage));
+    await AsyncStorage.setItem(usageKey, JSON.stringify(usage));
+  } else if (!rawUsage && legacyRawUsage) {
+    await AsyncStorage.setItem(usageKey, JSON.stringify(usage));
   }
 
   const limit = limitForProfile(profile);
@@ -97,7 +114,7 @@ export async function consumeInspectionUse() {
   }
 
   const usage = { ...state.usage, count: state.usage.count + 1 };
-  await AsyncStorage.setItem(USAGE_KEY, JSON.stringify(usage));
+  await AsyncStorage.setItem(usageKeyForProfile(state.profile), JSON.stringify(usage));
   const nextState = await loadAccountState();
   return { allowed: true, state: nextState };
 }

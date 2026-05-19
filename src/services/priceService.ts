@@ -70,6 +70,21 @@ export type PricePredictionQuarter = {
 export type PricePrediction = {
   selectedGrade: string;
   source?: string;
+  latestMarketPrice?: {
+    parentCode: string;
+    category: string;
+    gradeCode: string;
+    grade: string;
+    description?: string;
+    day: string;
+    latestPrice?: number;
+    previousTradeDay?: string;
+    previousTradePrice?: number;
+    diffPreviousTradePrice?: number;
+    ratePreviousTradePrice?: number;
+    unit: string;
+    sourceUrl: string;
+  };
   quarters: PricePredictionQuarter[];
 };
 
@@ -405,6 +420,41 @@ export async function fetchDetailedMarketPriceHistory(parentCode: string, gradeC
 export async function fetchPricePrediction(selectedGrade?: string): Promise<PricePrediction | undefined> {
   if (!selectedGrade) {
     return undefined;
+  }
+
+  const gradeInfo = detailedPriceGrades
+    .flatMap((parentInfo) => parentInfo.grades.map((grade) => ({ parentInfo, grade })))
+    .find((item) => item.grade.gradeCode === selectedGrade);
+
+  if (gradeInfo) {
+    try {
+      const history = await fetchDetailedMarketPriceHistory(gradeInfo.parentInfo.parentCode, selectedGrade);
+      const latest = history[0];
+      if (latest?.latestPrice) {
+        return {
+          selectedGrade,
+          source: 'insamtong',
+          latestMarketPrice: {
+            parentCode: gradeInfo.parentInfo.parentCode,
+            category: gradeInfo.parentInfo.category,
+            gradeCode: selectedGrade,
+            grade: gradeInfo.grade.grade,
+            description: 'description' in gradeInfo.grade ? gradeInfo.grade.description : undefined,
+            day: latest.day,
+            latestPrice: latest.latestPrice,
+            previousTradeDay: latest.previousTradeDay,
+            previousTradePrice: latest.previousTradePrice,
+            diffPreviousTradePrice: latest.diffPreviousTradePrice,
+            ratePreviousTradePrice: latest.ratePreviousTradePrice,
+            unit: gradeInfo.grade.unit,
+            sourceUrl: `https://insamtong.kr/priceReport.do?parents=${gradeInfo.parentInfo.parentCode}&grade=${selectedGrade}`,
+          },
+          quarters: [],
+        };
+      }
+    } catch {
+      // Fall through to the prediction endpoint if the latest market price is unavailable.
+    }
   }
 
   const response = await fetch(`${API_BASE_URL}/v1/prices/prediction?selectedGrade=${encodeURIComponent(selectedGrade)}`);

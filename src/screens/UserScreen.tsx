@@ -147,13 +147,21 @@ const UserScreen = () => {
           <View style={styles.accountHeader}>
             <View>
               <Text style={styles.title}>{isMember ? profile.nickname : '비회원'}</Text>
-              <Text style={styles.meta}>{isMember ? `${profile.provider?.toUpperCase()} 로그인` : '소셜 계정 연결 전'}</Text>
+              <Text style={styles.meta}>{isMember ? `${providerLabels[profile.provider ?? 'kakao']} 계정으로 로그인됨` : '소셜 계정 연결 전'}</Text>
             </View>
             <View style={styles.usageBadge}>
-              <Text style={styles.usageBadgeText}>{remaining}회</Text>
+              <Text style={styles.usageBadgeText}>{remaining}회 남음</Text>
             </View>
           </View>
-          <Text style={styles.body}>오늘 {usage.count}/{limit}회 사용</Text>
+          <Text style={styles.body}>오늘 AI 판독 {usage.count}/{limit}회 사용</Text>
+          {isMember ? (
+            <View style={styles.accountDetails}>
+              {profile.email ? <Text style={styles.meta}>이메일 {profile.email}</Text> : null}
+              <Text style={styles.meta}>회원 ID {profile.id}</Text>
+              <Text style={styles.meta}>소셜 ID {profile.providerUserId}</Text>
+              {profile.joinedAt ? <Text style={styles.meta}>가입일 {new Date(profile.joinedAt).toLocaleDateString('ko-KR')}</Text> : null}
+            </View>
+          ) : null}
         </Panel>
 
         {isMember ? (
@@ -257,6 +265,7 @@ const styles = StyleSheet.create({
   panelTitle: { color: colors.cream, fontSize: 16, lineHeight: 24, fontWeight: '700', marginBottom: 10 },
   body: { color: colors.gray60, fontSize: 14, lineHeight: 21 },
   meta: { color: colors.gray60, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  accountDetails: { marginTop: 8 },
   usageBadge: {
     minWidth: 64,
     minHeight: 40,
