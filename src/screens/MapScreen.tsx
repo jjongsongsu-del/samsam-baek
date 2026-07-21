@@ -27,6 +27,8 @@ const categories: CategoryMeta[] = [
 ];
 
 const googleMapsUrl = (query: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+const googleNavigationUrl = (query: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}&travelmode=driving`;
+const phoneUrl = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
 const openUrl = (url: string) => Linking.openURL(url);
 
 const categoryLabel = (category: MapCategory) => categories.find((item) => item.key === category)?.label ?? category;
@@ -319,6 +321,16 @@ const MapScreen = () => {
                     <Ionicons name="map" size={16} color={colors.primary60} />
                     <Text style={styles.actionText}>지도</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionButton} onPress={() => openUrl(googleNavigationUrl(item.address || item.title))}>
+                    <Ionicons name="navigate" size={16} color={colors.primary60} />
+                    <Text style={styles.actionText}>내비</Text>
+                  </TouchableOpacity>
+                  {item.phone ? (
+                    <TouchableOpacity style={styles.actionButton} onPress={() => openUrl(phoneUrl(item.phone ?? ''))}>
+                      <Ionicons name="call" size={16} color={colors.primary60} />
+                      <Text style={styles.actionText}>전화</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               </Panel>
             </TouchableOpacity>
