@@ -27,6 +27,15 @@ const simpleGradeParents: Record<string, string> = {
   '48': '6',
 };
 
+const gradeImageSources: Record<string, { uri: string }> = {
+  '13': { uri: 'https://insamtong.kr/resources/design/resources/img/pattern/grade/01_07.png' },
+  '16': { uri: 'https://insamtong.kr/resources/design/resources/img/pattern/grade/01_10.png' },
+  '17': { uri: 'https://insamtong.kr/resources/design/resources/img/pattern/grade/04_01.png' },
+  '24': { uri: 'https://insamtong.kr/resources/design/resources/img/pattern/grade/03_08.png' },
+  '27': { uri: 'https://insamtong.kr/resources/design/resources/img/pattern/grade/03_11.png' },
+  '48': { uri: 'https://insamtong.kr/resources/design/resources/img/pattern/grade/05_01.png' },
+};
+
 const fallbackMainPrice: CurrentMarketPrice = {
   gradeCode: latestPrices[1]?.gradeCode ?? defaultGradeCode,
   name: latestPrices[1]?.grade ?? '믹서',
@@ -287,7 +296,7 @@ const HomeScreen = ({ navigation }: any) => {
         </ScrollView>
 
         <View style={styles.marketHero}>
-          <Image source={mascotImage} style={styles.marketImage} resizeMode="contain" />
+          <Image source={gradeImageSources[mainPrice.gradeCode] ?? mascotImage} style={styles.marketImage} resizeMode="contain" />
           <View style={styles.marketBody}>
             <Text style={styles.priceName}>{mainPrice.category} / {mainPrice.grade}</Text>
             <Text style={styles.priceValue}>{formatPrice(mainPrice.currentAvgPrice)}</Text>

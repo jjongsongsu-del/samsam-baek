@@ -12,10 +12,16 @@ export type CurrentMarketPrice = {
   day: string;
   requestedDate: string;
   currentAvgPrice?: number;
+  prevDayAvgPrice?: number;
+  diffPrevDay?: number;
+  ratePrevDay?: number;
   previousTradeDay?: string;
   previousTradePrice?: number;
   diffPreviousTradePrice?: number;
   ratePreviousTradePrice?: number;
+  prevYearAvgPrice?: number;
+  diffPrevYear?: number;
+  ratePrevYear?: number;
   unit: string;
   sourceUrl: string;
   source: string;
@@ -189,9 +195,15 @@ async function getLatestPrice(gradeInfo: (typeof simplePriceGrades)[number], req
     day: String(latest.day ?? price.day ?? requestedDate),
     requestedDate,
     currentAvgPrice,
+    prevDayAvgPrice: toNumber(price.prevDayAvgPrice),
+    diffPrevDay: toNumber(price.diffPrevDay),
+    ratePrevDay: toNumber(price.ratePrevDay),
     previousTradeDay: previous?.day ? String(previous.day) : undefined,
     previousTradePrice,
     ...computeTradeComparison(currentAvgPrice, previousTradePrice),
+    prevYearAvgPrice: toNumber(price.prevYearAvgPrice),
+    diffPrevYear: toNumber(price.diffPrevYear),
+    ratePrevYear: toNumber(price.ratePrevYear),
     unit: gradeInfo.unit,
     sourceUrl: `https://insamtong.kr/price.do?selectedGrade=${gradeInfo.gradeCode}&date=${requestedDate}`,
     source: 'insamtong',
