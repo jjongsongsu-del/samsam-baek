@@ -22,7 +22,7 @@ import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
 import {
   consumeInspectionUse,
-  refreshServerAccountUsage,
+  loadAccountState,
   type AccountState,
 } from '../services/accountService';
 import {
@@ -205,7 +205,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
   };
 
   const refreshAccount = async () => {
-    const state = await refreshServerAccountUsage();
+    const state = await loadAccountState();
     setAccountState(state);
   };
 
@@ -465,18 +465,7 @@ const InspectionScreen = ({ route, navigation }: any) => {
     setTipIndex(0);
 
     try {
-      const usageState = await refreshServerAccountUsage();
-      setAccountState(usageState);
-      if (usageState.usage.count >= usageState.limit) {
-        Alert.alert(
-          '일일 판독 횟수 초과',
-          usageState.profile.mode === 'member'
-            ? '회원 일일 판독 100회를 모두 사용했습니다. 내일 다시 이용해 주세요.'
-            : '비회원 일일 판독 10회를 모두 사용했습니다. SNS 회원가입을 하면 하루 100회까지 판독할 수 있습니다.',
-        );
-        setActiveView('source');
-        return;
-      }
+      setAccountState(await loadAccountState());
 
       setActiveView('result');
       requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 96, animated: true }));
@@ -1026,22 +1015,22 @@ const InspectionScreen = ({ route, navigation }: any) => {
       return null;
     }
 
-    const { profile, usage, limit, remaining } = accountState;
-    const isMember = profile.mode === 'member';
+    const { usage } = accountState;
+    const usageCount = usage.count.toLocaleString('ko-KR');
 
     return (
       <Panel tone="light">
         <View style={styles.accountHeader}>
           <View>
-            <Text style={styles.lightTitle}>{isMember ? '회원 판독 이용 현황' : '비회원 판독 이용 현황'}</Text>
-            <Text style={styles.lightText}>오늘 {usage.count}/{limit}회 사용, 남은 {remaining}회</Text>
+            <Text style={styles.lightTitle}>AI 판독 이용 현황</Text>
+            <Text style={styles.lightText}>오늘 이 기기에서 {usageCount}회 판독했습니다.</Text>
           </View>
           <View style={styles.usageBadge}>
-            <Text style={styles.usageBadgeText}>{remaining}회</Text>
+            <Text style={styles.usageBadgeText}>{usageCount}회</Text>
           </View>
         </View>
 
-        <Text style={styles.accountMeta}>{isMember ? `${profile.provider?.toUpperCase() ?? 'SNS'} 회원` : '사용자 메뉴에서 소셜 계정을 연결할 수 있습니다.'}</Text>
+        <Text style={styles.accountMeta}>로그인 없이 바로 판독할 수 있습니다.</Text>
       </Panel>
     );
   };

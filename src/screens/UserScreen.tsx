@@ -1,290 +1,50 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppSurface } from '../components/AppSurface';
 import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
-import {
-  GOOGLE_CLIENT_ID,
-  GOOGLE_REDIRECT_PATH,
-  KAKAO_REDIRECT_PATH,
-  KAKAO_REDIRECT_SCHEME,
-  KAKAO_REST_API_KEY,
-  refreshServerAccountUsage,
-  signInWithGoogleAuthorizationCode,
-  signInWithKakaoAuthorizationCode,
-  signInWithSocial,
-  signOutAccount,
-  updateAccountProfile,
-  type AccountState,
-  type SocialProvider,
-} from '../services/accountService';
-import { loadAdminSession, signInAdmin, signOutAdmin, type AdminSession } from '../services/adminAuthService';
+import { loadAccountState, type AccountState } from '../services/accountService';
 import { colors } from '../theme';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const providerLabels: Record<SocialProvider, string> = {
-  naver: 'NAVER',
-  kakao: 'KAKAO',
-  google: 'GOOGLE',
-};
 
 const UserScreen = () => {
   const [accountState, setAccountState] = useState<AccountState | null>(null);
-  const [profileName, setProfileName] = useState('');
-  const [profileEmail, setProfileEmail] = useState('');
-  const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
-  const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
-  const [adminUsername, setAdminUsername] = useState('manager');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminLoading, setAdminLoading] = useState(false);
-  const kakaoRedirectUri = useMemo(
-    () => AuthSession.makeRedirectUri({ scheme: KAKAO_REDIRECT_SCHEME, path: KAKAO_REDIRECT_PATH }),
-    [],
-  );
-  const googleRedirectUri = useMemo(
-    () => AuthSession.makeRedirectUri({ scheme: KAKAO_REDIRECT_SCHEME, path: GOOGLE_REDIRECT_PATH }),
-    [],
-  );
-  const [, , promptKakaoAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: KAKAO_REST_API_KEY,
-      redirectUri: kakaoRedirectUri,
-      responseType: AuthSession.ResponseType.Code,
-    },
-    {
-      authorizationEndpoint: 'https://kauth.kakao.com/oauth/authorize',
-    },
-  );
-  const [, , promptGoogleAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID,
-      redirectUri: googleRedirectUri,
-      responseType: AuthSession.ResponseType.Code,
-      scopes: ['openid', 'profile', 'email'],
-    },
-    {
-      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    },
-  );
-
-  const refreshAccount = async () => {
-    const state = await refreshServerAccountUsage();
-    const admin = await loadAdminSession();
-    setAccountState(state);
-    setAdminSession(admin);
-    setProfileName(state.profile.nickname);
-    setProfileEmail(state.profile.email ?? '');
-  };
 
   useEffect(() => {
-    refreshAccount();
+    loadAccountState().then(setAccountState);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshAccount();
-    }, []),
-  );
-
-  const handleSocialSignIn = async (provider: SocialProvider) => {
-    setLoadingProvider(provider);
-    try {
-      if (provider === 'kakao') {
-        if (!KAKAO_REST_API_KEY) {
-          throw new Error('EXPO_PUBLIC_KAKAO_REST_API_KEY is not configured.');
-        }
-        const result = await promptKakaoAsync();
-        if (result.type !== 'success') {
-          return;
-        }
-        const code = result.params.code;
-        if (!code) {
-          throw new Error('Kakao authorization code was not returned.');
-        }
-        setAccountState(await signInWithKakaoAuthorizationCode(code, kakaoRedirectUri));
-        return;
-      }
-      if (provider === 'google') {
-        if (!GOOGLE_CLIENT_ID) {
-          throw new Error('EXPO_PUBLIC_GOOGLE_CLIENT_ID is not configured.');
-        }
-        const result = await promptGoogleAsync();
-        if (result.type !== 'success') {
-          return;
-        }
-        const code = result.params.code;
-        if (!code) {
-          throw new Error('Google authorization code was not returned.');
-        }
-        setAccountState(await signInWithGoogleAuthorizationCode(code, googleRedirectUri));
-        return;
-      }
-      setAccountState(await signInWithSocial(provider));
-    } catch (error: any) {
-      Alert.alert('로그인 실패', error.message || '잠시 후 다시 시도해 주세요.');
-    } finally {
-      setLoadingProvider(null);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    setAccountState(await updateAccountProfile({ nickname: profileName, email: profileEmail }));
-    Alert.alert('저장 완료', '사용자 정보가 저장되었습니다.');
-  };
-
-  const handleSignOut = async () => {
-    setAccountState(await signOutAccount());
-  };
-
-  const handleAdminSignIn = async () => {
-    setAdminLoading(true);
-    try {
-      const session = await signInAdmin(adminUsername.trim(), adminPassword);
-      setAdminSession(session);
-      setAdminPassword('');
-      Alert.alert('관리자 로그인 완료', '지도 메뉴에서 CSV 반영을 사용할 수 있습니다.');
-    } catch (error: any) {
-      Alert.alert('관리자 로그인 실패', error.message || '계정 정보를 확인해 주세요.');
-    } finally {
-      setAdminLoading(false);
-    }
-  };
-
-  const handleAdminSignOut = async () => {
-    await signOutAdmin();
-    setAdminSession(null);
-  };
-
-  if (!accountState) {
-    return (
-      <AppSurface>
-        <ScreenHeader title="사용자" description="계정과 AI 판독 이용 현황을 확인합니다." />
-      </AppSurface>
-    );
-  }
-
-  const { profile, usage, limit, remaining } = accountState;
-  const isMember = profile.mode === 'member';
+  const usageCount = accountState?.usage.count ?? 0;
 
   return (
     <AppSurface>
       <ScrollView contentContainerStyle={styles.content}>
-        <ScreenHeader title="사용자" description="계정과 AI 판독 이용 현황을 확인합니다." />
+        <ScreenHeader title="이용 안내" description="로그인 없이 삼삼백과의 주요 기능을 바로 사용할 수 있습니다." />
 
         <Panel tone="light">
           <View style={styles.accountHeader}>
-            <View>
-              <Text style={styles.title}>{isMember ? profile.nickname : '비회원'}</Text>
-              <Text style={styles.meta}>{isMember ? `${providerLabels[profile.provider ?? 'kakao']} 계정으로 로그인됨` : '소셜 계정 연결 전'}</Text>
+            <View style={styles.iconBadge}>
+              <Ionicons name="checkmark-circle" size={22} color={colors.primary60} />
             </View>
-            <View style={styles.usageBadge}>
-              <Text style={styles.usageBadgeText}>{remaining}회 남음</Text>
+            <View style={styles.headerCopy}>
+              <Text style={styles.title}>로그인 없이 이용</Text>
+              <Text style={styles.body}>AI 판독, 시세, 백과, 지도 기능을 계정 연결 없이 사용할 수 있습니다.</Text>
             </View>
           </View>
-          <Text style={styles.body}>오늘 AI 판독 {usage.count}/{limit}회 사용</Text>
-          {isMember ? (
-            <View style={styles.accountDetails}>
-              {profile.email ? <Text style={styles.meta}>이메일 {profile.email}</Text> : null}
-              <Text style={styles.meta}>회원 ID {profile.id}</Text>
-              <Text style={styles.meta}>소셜 ID {profile.providerUserId}</Text>
-              {profile.joinedAt ? <Text style={styles.meta}>가입일 {new Date(profile.joinedAt).toLocaleDateString('ko-KR')}</Text> : null}
-            </View>
-          ) : null}
+          <Text style={styles.meta}>오늘 이 기기에서 실행한 AI 판독: {usageCount.toLocaleString('ko-KR')}회</Text>
         </Panel>
 
-        {isMember ? (
-          <Panel>
-            <Text style={styles.panelTitle}>내 정보</Text>
-            <TextInput
-              value={profileName}
-              onChangeText={setProfileName}
-              placeholder="닉네임"
-              placeholderTextColor={colors.gray40}
-              style={styles.profileInput}
-            />
-            <TextInput
-              value={profileEmail}
-              onChangeText={setProfileEmail}
-              placeholder="이메일"
-              placeholderTextColor={colors.gray40}
-              style={styles.profileInput}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <Text style={styles.meta}>사용자 ID {profile.id}</Text>
-            <Text style={styles.meta}>소셜 ID {profile.providerUserId}</Text>
-            <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.accountButton} onPress={handleSaveProfile}>
-                <Ionicons name="save" size={16} color={colors.primary60} />
-                <Text style={styles.accountButtonText}>저장</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.accountButton, styles.deleteButton]} onPress={handleSignOut}>
-                <Ionicons name="log-out" size={16} color={colors.danger60} />
-                <Text style={styles.deleteText}>로그아웃</Text>
-              </TouchableOpacity>
-            </View>
-          </Panel>
-        ) : (
-          <Panel>
-            <Text style={styles.panelTitle}>소셜 로그인</Text>
-            <View style={styles.socialStack}>
-              {(['naver', 'kakao', 'google'] as SocialProvider[]).map((provider) => (
-                <TouchableOpacity
-                  key={provider}
-                  style={styles.socialButton}
-                  onPress={() => handleSocialSignIn(provider)}
-                  disabled={loadingProvider !== null}
-                >
-                  <Ionicons name="log-in" size={17} color={colors.white} />
-                  <Text style={styles.socialButtonText}>
-                    {loadingProvider === provider ? '연결 중' : `${providerLabels[provider]}로 계속`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Panel>
-        )}
+        <Panel>
+          <Text style={styles.panelTitle}>개인정보 및 데이터 안내</Text>
+          <Text style={styles.body}>사진은 AI 판독을 위해 서버로 전송되며, 서버는 기본적으로 원본 사진을 저장하지 않습니다.</Text>
+          <Text style={styles.meta}>앱의 저장 목록은 사용 중인 기기 안에만 보관됩니다.</Text>
+          <Text style={styles.meta}>계정 로그인 기능을 사용하지 않으므로 소셜 계정 정보는 수집하지 않습니다.</Text>
+        </Panel>
 
         <Panel>
-          <Text style={styles.panelTitle}>관리자</Text>
-          {adminSession ? (
-            <>
-              <Text style={styles.body}>{adminSession.username} 계정으로 로그인되어 있습니다.</Text>
-              <Text style={styles.meta}>만료 {new Date(adminSession.expiresAt).toLocaleString('ko-KR')}</Text>
-              <TouchableOpacity style={[styles.accountButton, styles.adminLogoutButton]} onPress={handleAdminSignOut}>
-                <Ionicons name="lock-open" size={16} color={colors.primary60} />
-                <Text style={styles.accountButtonText}>관리자 로그아웃</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TextInput
-                value={adminUsername}
-                onChangeText={setAdminUsername}
-                placeholder="관리자 ID"
-                placeholderTextColor={colors.gray40}
-                style={styles.profileInput}
-                autoCapitalize="none"
-              />
-              <TextInput
-                value={adminPassword}
-                onChangeText={setAdminPassword}
-                placeholder="관리자 비밀번호"
-                placeholderTextColor={colors.gray40}
-                style={styles.profileInput}
-                secureTextEntry
-              />
-              <TouchableOpacity style={styles.socialButton} onPress={handleAdminSignIn} disabled={adminLoading}>
-                <Ionicons name="lock-closed" size={17} color={colors.white} />
-                <Text style={styles.socialButtonText}>{adminLoading ? '로그인 중' : '관리자 로그인'}</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <Text style={styles.panelTitle}>AI 판독 안내</Text>
+          <Text style={styles.body}>판독 결과는 참고 정보이며 공식 감정이나 거래 보증이 아닙니다.</Text>
+          <Text style={styles.meta}>사진 품질, 조명, 배경, 인삼 상태에 따라 결과가 달라질 수 있습니다.</Text>
         </Panel>
       </ScrollView>
     </AppSurface>
@@ -293,64 +53,22 @@ const UserScreen = () => {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 28 },
-  accountHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 },
-  title: { color: colors.ink, fontSize: 20, lineHeight: 30, fontWeight: '700' },
-  panelTitle: { color: colors.cream, fontSize: 16, lineHeight: 24, fontWeight: '700', marginBottom: 10 },
-  body: { color: colors.gray60, fontSize: 14, lineHeight: 21 },
-  meta: { color: colors.gray60, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  accountDetails: { marginTop: 8 },
-  usageBadge: {
-    minWidth: 64,
-    minHeight: 40,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+  accountHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  iconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
     backgroundColor: colors.primary5,
     borderColor: colors.primary10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  usageBadgeText: { color: colors.primary60, fontSize: 15, lineHeight: 23, fontWeight: '700' },
-  profileInput: {
-    minHeight: 44,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.primary10,
-    backgroundColor: colors.gray0,
-    color: colors.ink,
-    fontSize: 14,
-    lineHeight: 21,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-  },
-  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  accountButton: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.primary10,
-    backgroundColor: colors.gray0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 6,
-  },
-  accountButtonText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
-  adminLogoutButton: { marginTop: 12 },
-  deleteButton: { borderColor: colors.danger5, backgroundColor: colors.danger5 },
-  deleteText: { color: colors.danger60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
-  socialStack: { gap: 10 },
-  socialButton: {
-    minHeight: 48,
-    borderRadius: 6,
-    backgroundColor: colors.primary60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  socialButtonText: { color: colors.white, fontSize: 14, lineHeight: 21, fontWeight: '700' },
+  headerCopy: { flex: 1 },
+  title: { color: colors.ink, fontSize: 20, lineHeight: 30, fontWeight: '700' },
+  panelTitle: { color: colors.cream, fontSize: 16, lineHeight: 24, fontWeight: '700', marginBottom: 10 },
+  body: { color: colors.gray60, fontSize: 14, lineHeight: 21 },
+  meta: { color: colors.gray60, fontSize: 12, lineHeight: 18, marginTop: 6 },
 });
 
 export default UserScreen;

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -8,7 +7,7 @@ import { AppSurface } from '../components/AppSurface';
 import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { mapFallbackData } from '../data/mapFallbackData';
-import { loadAdminSession, type AdminSession } from '../services/adminAuthService';
+import { loadAdminSession, signInAdmin, signOutAdmin, type AdminSession } from '../services/adminAuthService';
 import { fetchMapData, importMapCsv, type MapCategory, type MapDataItem } from '../services/mapDataService';
 import { colors } from '../theme';
 
@@ -51,6 +50,9 @@ const MapScreen = () => {
   const [loading, setLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
+  const [adminUsername, setAdminUsername] = useState('manager');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sourceMessage, setSourceMessage] = useState('로컬 기본 데이터');
 
@@ -81,15 +83,32 @@ const MapScreen = () => {
     loadData();
   }, [loadData]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadAdminSession().then(setAdminSession);
-    }, []),
-  );
+  useEffect(() => {
+    loadAdminSession().then(setAdminSession);
+  }, []);
+
+  const handleAdminSignIn = async () => {
+    setAdminLoading(true);
+    try {
+      const session = await signInAdmin(adminUsername.trim(), adminPassword);
+      setAdminSession(session);
+      setAdminPassword('');
+      Alert.alert('관리자 로그인 완료', 'CSV 반영 기능을 사용할 수 있습니다.');
+    } catch (error: any) {
+      Alert.alert('관리자 로그인 실패', error.message || '계정 정보를 확인해 주세요.');
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const handleAdminSignOut = async () => {
+    await signOutAdmin();
+    setAdminSession(null);
+  };
 
   const handleImportCsv = async () => {
     if (!adminSession) {
-      Alert.alert('관리자 로그인 필요', '사용자 메뉴에서 관리자 로그인 후 CSV를 반영할 수 있습니다.');
+      Alert.alert('관리자 로그인 필요', '관리자 로그인 후 CSV를 반영할 수 있습니다.');
       return;
     }
     setUploading(true);
@@ -101,6 +120,7 @@ const MapScreen = () => {
       if (picked.canceled) {
         return;
       }
+
       const asset = picked.assets[0];
       const csvBase64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
       const result = await importMapCsv(category, asset.name, csvBase64, adminSession.accessToken);
@@ -171,24 +191,52 @@ const MapScreen = () => {
         ) : null}
       </View>
 
-      {adminSession ? (
-        <TouchableOpacity style={styles.adminToggle} onPress={() => setAdminOpen((value) => !value)}>
-          <Ionicons name="cloud-upload-outline" size={18} color={colors.primary60} />
-          <Text style={styles.adminToggleText}>관리자 CSV 반영</Text>
-          <Ionicons name={adminOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.primary60} />
-        </TouchableOpacity>
-      ) : null}
+      <TouchableOpacity style={styles.adminToggle} onPress={() => setAdminOpen((value) => !value)}>
+        <Ionicons name="cloud-upload-outline" size={18} color={colors.primary60} />
+        <Text style={styles.adminToggleText}>관리자 CSV 반영</Text>
+        <Ionicons name={adminOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.primary60} />
+      </TouchableOpacity>
 
-      {adminSession && adminOpen ? (
+      {adminOpen ? (
         <Panel>
-          <Text style={styles.adminTitle}>{selectedCategory.label} CSV 업로드</Text>
-          <Text style={styles.adminText}>
-            {adminSession.username} 관리자 계정으로 로그인되어 있습니다. 현재 분류에 맞는 CSV를 선택해 주세요.
-          </Text>
-          <TouchableOpacity style={styles.importButton} onPress={handleImportCsv} disabled={uploading}>
-            <Ionicons name="document-attach" size={17} color={colors.white} />
-            <Text style={styles.importButtonText}>{uploading ? '반영 중' : 'CSV 선택 후 반영'}</Text>
-          </TouchableOpacity>
+          <Text style={styles.adminTitle}>{selectedCategory.label} CSV 반영</Text>
+          {adminSession ? (
+            <>
+              <Text style={styles.adminText}>{adminSession.username} 관리자 계정으로 로그인되어 있습니다.</Text>
+              <TouchableOpacity style={styles.importButton} onPress={handleImportCsv} disabled={uploading}>
+                <Ionicons name="document-attach" size={17} color={colors.white} />
+                <Text style={styles.importButtonText}>{uploading ? '반영 중' : 'CSV 선택 후 반영'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.adminLogoutButton} onPress={handleAdminSignOut}>
+                <Ionicons name="log-out-outline" size={16} color={colors.primary60} />
+                <Text style={styles.adminLogoutText}>관리자 로그아웃</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.adminText}>CSV 반영은 관리자만 사용할 수 있습니다.</Text>
+              <TextInput
+                value={adminUsername}
+                onChangeText={setAdminUsername}
+                placeholder="관리자 ID"
+                placeholderTextColor={colors.gray40}
+                style={styles.adminInput}
+                autoCapitalize="none"
+              />
+              <TextInput
+                value={adminPassword}
+                onChangeText={setAdminPassword}
+                placeholder="관리자 비밀번호"
+                placeholderTextColor={colors.gray40}
+                style={styles.adminInput}
+                secureTextEntry
+              />
+              <TouchableOpacity style={styles.importButton} onPress={handleAdminSignIn} disabled={adminLoading}>
+                <Ionicons name="lock-closed" size={17} color={colors.white} />
+                <Text style={styles.importButtonText}>{adminLoading ? '로그인 중' : '관리자 로그인'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </Panel>
       ) : null}
 
@@ -307,6 +355,18 @@ const styles = StyleSheet.create({
   adminToggleText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
   adminTitle: { color: colors.cream, fontSize: 16, lineHeight: 24, fontWeight: '700', marginBottom: 6 },
   adminText: { color: colors.gray60, fontSize: 13, lineHeight: 20, marginBottom: 12 },
+  adminInput: {
+    minHeight: 44,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    backgroundColor: colors.gray0,
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 21,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
   importButton: {
     minHeight: 44,
     borderRadius: 6,
@@ -317,6 +377,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   importButtonText: { color: colors.white, fontSize: 14, lineHeight: 21, fontWeight: '700' },
+  adminLogoutButton: {
+    minHeight: 40,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    backgroundColor: colors.gray0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+  },
+  adminLogoutText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { color: colors.ink, fontSize: 18, lineHeight: 27, fontWeight: '700' },
   countText: { color: colors.gray60, fontSize: 13, lineHeight: 20, fontWeight: '700' },

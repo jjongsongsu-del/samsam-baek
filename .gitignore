@@ -21,9 +21,16 @@ yarn-error.log*
 
 android/local.properties
 android/app/debug.keystore
+android/app/*.jks
+android/app/*.keystore
 android/.gradle/
 android/build/
 android/app/build/
+.gradle-cache*/
+/*.apk
+/*.aab
+
+docs/client_secret_*.json
 
 services/bff/dist/
 services/bff/data/auth.json

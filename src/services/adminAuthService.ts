@@ -14,6 +14,7 @@ export async function loadAdminSession(): Promise<AdminSession | null> {
   if (!raw) {
     return null;
   }
+
   try {
     const session = JSON.parse(raw) as AdminSession;
     if (!session.accessToken || new Date(session.expiresAt).getTime() <= Date.now()) {
@@ -33,9 +34,12 @@ export async function signInAdmin(username: string, password: string): Promise<A
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
+
   if (!response.ok) {
-    throw new Error('관리자 계정 정보를 확인해 주세요.');
+    const message = await response.text();
+    throw new Error(message || '관리자 로그인에 실패했습니다.');
   }
+
   const session = (await response.json()) as AdminSession;
   await AsyncStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
   return session;

@@ -13,6 +13,7 @@ export const socialLoginSchema = z
     accessToken: z.string().min(1).optional(),
     authorizationCode: z.string().min(1).optional(),
     redirectUri: z.string().min(1).optional(),
+    codeVerifier: z.string().min(1).optional(),
   })
   .refine((body) => body.accessToken || body.authorizationCode, {
     message: 'accessToken or authorizationCode is required',
@@ -200,7 +201,7 @@ async function exchangeKakaoAuthorizationCode(authorizationCode: string, redirec
   return String(body.access_token);
 }
 
-async function exchangeGoogleAuthorizationCode(authorizationCode: string, redirectUri?: string) {
+async function exchangeGoogleAuthorizationCode(authorizationCode: string, redirectUri?: string, codeVerifier?: string) {
   const resolvedRedirectUri = redirectUri || config.googleRedirectUri;
   if (!config.googleClientId) {
     throw new Error('GOOGLE_CLIENT_ID is not configured');
@@ -217,6 +218,9 @@ async function exchangeGoogleAuthorizationCode(authorizationCode: string, redire
   });
   if (config.googleClientSecret) {
     params.set('client_secret', config.googleClientSecret);
+  }
+  if (codeVerifier) {
+    params.set('code_verifier', codeVerifier);
   }
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -277,7 +281,7 @@ export async function loginWithSocial(input: z.infer<typeof socialLoginSchema>) 
     if (provider === 'kakao') {
       accessToken = await exchangeKakaoAuthorizationCode(input.authorizationCode, input.redirectUri);
     } else if (provider === 'google') {
-      accessToken = await exchangeGoogleAuthorizationCode(input.authorizationCode, input.redirectUri);
+      accessToken = await exchangeGoogleAuthorizationCode(input.authorizationCode, input.redirectUri, input.codeVerifier);
     } else {
       throw new Error('authorizationCode login is not supported for this provider');
     }

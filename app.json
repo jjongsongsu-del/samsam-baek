@@ -21,12 +21,11 @@
       },
       "permissions": [
         "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "READ_EXTERNAL_STORAGE"
+        "READ_MEDIA_IMAGES"
       ]
     },
     "extra": {
-      "apiBaseUrl": "http://localhost:8080"
+      "apiBaseUrl": "http://samsam.aodata.co.kr:8091"
     },
     "plugins": [
       "expo-font",

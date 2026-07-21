@@ -17,7 +17,7 @@ export type RootTabParamList = {
   백과: undefined;
   지도: undefined;
   가이드: undefined;
-  사용자: undefined;
+  안내: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -29,7 +29,7 @@ const iconMap: Record<keyof RootTabParamList, [string, string]> = {
   백과: ['book', 'book-outline'],
   지도: ['map', 'map-outline'],
   가이드: ['ribbon', 'ribbon-outline'],
-  사용자: ['person', 'person-outline'],
+  안내: ['information-circle', 'information-circle-outline'],
 };
 
 const AppNavigator = () => {
@@ -62,7 +62,7 @@ const AppNavigator = () => {
       <Tab.Screen name="백과" component={EncyclopediaScreen} />
       <Tab.Screen name="지도" component={MapScreen} />
       <Tab.Screen name="가이드" component={GuideScreen} />
-      <Tab.Screen name="사용자" component={UserScreen} />
+      <Tab.Screen name="안내" component={UserScreen} />
     </Tab.Navigator>
   );
 };
