@@ -15,6 +15,7 @@ type AppSurfaceProps = {
 export function AppSurface({ children, scroll = true, contentStyle, scrollRef, onEndReached, endReachedThreshold = 220 }: AppSurfaceProps) {
   const insets = useSafeAreaInsets();
   const safeStyle = [styles.safeArea, { paddingTop: Math.max(insets.top, 18) }];
+  const contentBottomStyle = { paddingBottom: 36 + Math.max(insets.bottom, 0) };
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!onEndReached) {
@@ -35,7 +36,7 @@ export function AppSurface({ children, scroll = true, contentStyle, scrollRef, o
     <View style={safeStyle}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.content, contentStyle]}
+        contentContainerStyle={[styles.content, contentBottomStyle, contentStyle]}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={120}

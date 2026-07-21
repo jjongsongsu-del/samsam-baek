@@ -43,7 +43,7 @@ const tourImages: Record<string, ImageSourcePropType> = {
   'tour-punggi-ginseng-festival': require('../assets/tour/punggi-ginseng-festival.jpg'),
   'tour-jinan-red-ginseng-festival': require('../assets/tour/jinan-red-ginseng-festival.jpg'),
   'tour-jeungpyeong-ginsenggol-festival': require('../assets/tour/jeungpyeong-ginsenggol-festival.jpg'),
-  'tour-paju-gaeseong-ginseng-festival': require('../assets/tour/paju-gaeseong-ginseng-festival.png'),
+  'tour-paju-gaeseong-ginseng-festival': require('../assets/tour/paju-gaeseong-ginseng-festival.jpg'),
 };
 
 const categoryLabel = (category: MapCategory) => categories.find((item) => item.key === category)?.label ?? category;
