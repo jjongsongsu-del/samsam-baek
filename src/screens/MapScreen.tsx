@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -10,6 +10,8 @@ import { mapFallbackData } from '../data/mapFallbackData';
 import { loadAdminSession, signInAdmin, signOutAdmin, type AdminSession } from '../services/adminAuthService';
 import { fetchMapData, importMapCsv, type MapCategory, type MapDataItem } from '../services/mapDataService';
 import { colors } from '../theme';
+
+const PAGE_SIZE = 40;
 
 type CategoryMeta = {
   key: MapCategory;
@@ -48,6 +50,9 @@ const MapScreen = () => {
   const [items, setItems] = useState<MapDataItem[]>(categoryFallback('cultivation'));
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id ?? null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(categoryFallback('cultivation').length);
+  const [hasMore, setHasMore] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
   const [adminUsername, setAdminUsername] = useState('manager');
@@ -55,6 +60,7 @@ const MapScreen = () => {
   const [adminLoading, setAdminLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sourceMessage, setSourceMessage] = useState('로컬 기본 데이터');
+  const loadingMoreRef = useRef(false);
 
   const selectedCategory = categories.find((item) => item.key === category) ?? categories[0];
   const filteredItems = useMemo(() => items.filter((item) => matchesQuery(item, query)), [items, query]);
@@ -63,21 +69,51 @@ const MapScreen = () => {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setHasMore(false);
     try {
-      const serverItems = await fetchMapData(category, query);
-      const nextItems = serverItems.length > 0 ? serverItems : categoryFallback(category);
+      const page = await fetchMapData(category, query, PAGE_SIZE, 0);
+      const serverItems = page.items;
+      const fallback = categoryFallback(category).filter((item) => matchesQuery(item, query));
+      const nextItems = serverItems.length > 0 || page.total > 0 ? serverItems : fallback;
       setItems(nextItems);
       setSelectedId(nextItems[0]?.id ?? null);
-      setSourceMessage(serverItems.length > 0 ? '서버 반영 데이터' : '로컬 기본 데이터');
+      setTotalCount(serverItems.length > 0 || page.total > 0 ? page.total : fallback.length);
+      setHasMore(page.hasMore);
+      setSourceMessage(serverItems.length > 0 || page.total > 0 ? '서버 반영 데이터' : '로컬 기본 데이터');
     } catch {
       const fallback = categoryFallback(category);
       setItems(fallback);
       setSelectedId(fallback[0]?.id ?? null);
+      setTotalCount(fallback.length);
+      setHasMore(false);
       setSourceMessage('서버 연결 실패로 로컬 기본 데이터 표시');
     } finally {
       setLoading(false);
     }
   }, [category, query]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || loadingMoreRef.current || !hasMore) {
+      return;
+    }
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const page = await fetchMapData(category, query, PAGE_SIZE, items.length);
+      setItems((current) => {
+        const seen = new Set(current.map((item) => item.id));
+        const next = page.items.filter((item) => !seen.has(item.id));
+        return [...current, ...next];
+      });
+      setTotalCount(page.total);
+      setHasMore(page.hasMore);
+    } catch {
+      setHasMore(false);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [category, hasMore, items.length, loading, loadingMore, query]);
 
   useEffect(() => {
     loadData();
@@ -134,8 +170,8 @@ const MapScreen = () => {
   };
 
   return (
-    <AppSurface>
-      <ScreenHeader title="인삼 지도" description="경작지, 판매업체, 금홍인증제품을 분류와 검색으로 확인합니다." />
+    <AppSurface onEndReached={loadMore}>
+      <ScreenHeader title="금산 인삼정보" description="경작지, 판매업체, 금홍인증제품을 분류와 검색으로 확인합니다." />
 
       <View style={styles.categoryGrid}>
         {categories.map((item) => {
@@ -242,7 +278,11 @@ const MapScreen = () => {
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{selectedCategory.label} 목록</Text>
-        <Text style={styles.countText}>{loading ? '불러오는 중' : `${filteredItems.length.toLocaleString('ko-KR')}건`}</Text>
+        <Text style={styles.countText}>
+          {loading
+            ? '불러오는 중'
+            : `${filteredItems.length.toLocaleString('ko-KR')} / ${totalCount.toLocaleString('ko-KR')}건`}
+        </Text>
       </View>
 
       {filteredItems.length === 0 ? (
@@ -285,6 +325,12 @@ const MapScreen = () => {
           );
         })
       )}
+      {hasMore ? (
+        <TouchableOpacity style={styles.moreButton} onPress={loadMore} disabled={loadingMore}>
+          <Ionicons name="chevron-down" size={17} color={colors.primary60} />
+          <Text style={styles.moreButtonText}>{loadingMore ? '더 불러오는 중' : '더 보기'}</Text>
+        </TouchableOpacity>
+      ) : null}
     </AppSurface>
   );
 };
@@ -418,6 +464,19 @@ const styles = StyleSheet.create({
   },
   actionText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
   emptyText: { color: colors.gray60, fontSize: 14, lineHeight: 21 },
+  moreButton: {
+    minHeight: 46,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    backgroundColor: colors.gray0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+  },
+  moreButtonText: { color: colors.primary60, fontSize: 14, lineHeight: 21, fontWeight: '700' },
 });
 
 export default MapScreen;

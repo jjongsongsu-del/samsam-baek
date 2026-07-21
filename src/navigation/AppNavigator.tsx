@@ -7,7 +7,6 @@ import InspectionScreen from '../screens/InspectionScreen';
 import EncyclopediaScreen from '../screens/EncyclopediaScreen';
 import MapScreen from '../screens/MapScreen';
 import GuideScreen from '../screens/GuideScreen';
-import UserScreen from '../screens/UserScreen';
 import { colors } from '../theme';
 
 export type RootTabParamList = {
@@ -15,9 +14,8 @@ export type RootTabParamList = {
   시세: { selectedGradeCode?: string } | undefined;
   판독: undefined;
   백과: undefined;
-  지도: undefined;
+  금산정보: undefined;
   가이드: undefined;
-  안내: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -27,9 +25,8 @@ const iconMap: Record<keyof RootTabParamList, [string, string]> = {
   시세: ['stats-chart', 'stats-chart-outline'],
   판독: ['camera', 'camera-outline'],
   백과: ['book', 'book-outline'],
-  지도: ['map', 'map-outline'],
-  가이드: ['ribbon', 'ribbon-outline'],
-  안내: ['information-circle', 'information-circle-outline'],
+  금산정보: ['map', 'map-outline'],
+  가이드: ['information-circle', 'information-circle-outline'],
 };
 
 const AppNavigator = () => {
@@ -60,9 +57,8 @@ const AppNavigator = () => {
       <Tab.Screen name="시세" component={MarketScreen} />
       <Tab.Screen name="판독" component={InspectionScreen} />
       <Tab.Screen name="백과" component={EncyclopediaScreen} />
-      <Tab.Screen name="지도" component={MapScreen} />
+      <Tab.Screen name="금산정보" component={MapScreen} />
       <Tab.Screen name="가이드" component={GuideScreen} />
-      <Tab.Screen name="안내" component={UserScreen} />
     </Tab.Navigator>
   );
 };

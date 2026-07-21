@@ -23,17 +23,34 @@ export type MapImportResult = {
   fileName: string;
 };
 
-export async function fetchMapData(category: MapCategory, q?: string): Promise<MapDataItem[]> {
+export type MapDataPage = {
+  items: MapDataItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+};
+
+export async function fetchMapData(category: MapCategory, q?: string, limit = 50, offset = 0): Promise<MapDataPage> {
   const params = new URLSearchParams({ category });
   if (q?.trim()) {
     params.set('q', q.trim());
   }
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
   const response = await fetch(`${API_BASE_URL}/v1/map-data?${params.toString()}`);
   if (!response.ok) {
     throw new Error('지도 데이터를 불러오지 못했습니다.');
   }
   const body = await response.json();
-  return Array.isArray(body.items) ? body.items : [];
+  const items = Array.isArray(body.items) ? body.items : [];
+  return {
+    items,
+    total: Number(body.total ?? items.length),
+    limit: Number(body.limit ?? limit),
+    offset: Number(body.offset ?? offset),
+    hasMore: Boolean(body.hasMore),
+  };
 }
 
 export async function importMapCsv(category: MapCategory, fileName: string, csvBase64: string, adminToken: string): Promise<MapImportResult> {

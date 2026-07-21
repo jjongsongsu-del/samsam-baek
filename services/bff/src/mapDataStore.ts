@@ -197,10 +197,10 @@ function decodeCsvBase64(csvBase64: string, encoding?: 'utf8' | 'euc-kr') {
   return utf8.includes('�') ? new TextDecoder('euc-kr').decode(bytes) : utf8;
 }
 
-export async function listMapData(options: { category?: MapCategory; q?: string }) {
+export async function listMapData(options: { category?: MapCategory; q?: string; limit?: number; offset?: number }) {
   const data = await readData();
   const query = normalize(options.q).toLowerCase();
-  return data.items.filter((item) => {
+  const filtered = data.items.filter((item) => {
     if (options.category && item.category !== options.category) {
       return false;
     }
@@ -213,6 +213,16 @@ export async function listMapData(options: { category?: MapCategory; q?: string 
       .toLowerCase()
       .includes(query);
   });
+  const offset = Math.max(0, Math.floor(options.offset ?? 0));
+  const limit = Math.min(Math.max(1, Math.floor(options.limit ?? 50)), 200);
+  const items = filtered.slice(offset, offset + limit);
+  return {
+    items,
+    total: filtered.length,
+    limit,
+    offset,
+    hasMore: offset + items.length < filtered.length,
+  };
 }
 
 export async function importMapData(input: z.infer<typeof mapImportSchema>) {
