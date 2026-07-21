@@ -23,3 +23,11 @@ CADDY_SITE_ADDRESS=:80
 ```
 
 Then the API will be available at `http://<server-host>:8091`.
+
+## Seed data
+
+The BFF image includes default seed files under `/app/seed-data`.
+On first container start, `docker-entrypoint.sh` copies them into `/app/data`
+only when the target files do not already exist. This lets a fresh Docker
+volume start with the bundled map data while preserving CSV data uploaded later
+through the admin UI.

@@ -34,7 +34,6 @@ docs/client_secret_*.json
 
 services/bff/dist/
 services/bff/data/auth.json
-services/bff/data/map-data.json
 services/ai/app/__pycache__/
 **/__pycache__/
 *.pyc
