@@ -13,3 +13,13 @@ Run from the repository root:
 ```bash
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build
 ```
+
+If another service already uses ports 80 or 443 on the host, set the public
+HTTP port in `deploy/.env`:
+
+```env
+HTTP_PORT=8091
+CADDY_SITE_ADDRESS=:80
+```
+
+Then the API will be available at `http://<server-host>:8091`.
