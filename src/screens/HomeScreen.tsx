@@ -149,10 +149,10 @@ const HomeScreen = ({ navigation }: any) => {
           <Text style={styles.quickTitle}>촬영</Text>
           <Text style={styles.quickText}>정확도 높이기</Text>
         </Pressable>
-        <Pressable style={styles.quickTile} onPress={() => navigation.navigate('금산정보')}>
+        <Pressable style={styles.quickTile} onPress={() => navigation.navigate('인삼정보')}>
           <Ionicons name="map" size={22} color={colors.mint} />
-          <Text style={styles.quickTitle}>금산정보</Text>
-          <Text style={styles.quickText}>경작지와 업체</Text>
+          <Text style={styles.quickTitle}>인삼정보</Text>
+          <Text style={styles.quickText}>경작지와 관광</Text>
         </Pressable>
       </View>
 

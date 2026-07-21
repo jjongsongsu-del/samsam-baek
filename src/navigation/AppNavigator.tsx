@@ -14,7 +14,7 @@ export type RootTabParamList = {
   시세: { selectedGradeCode?: string } | undefined;
   판독: undefined;
   백과: undefined;
-  금산정보: undefined;
+  인삼정보: undefined;
   가이드: undefined;
 };
 
@@ -25,7 +25,7 @@ const iconMap: Record<keyof RootTabParamList, [string, string]> = {
   시세: ['stats-chart', 'stats-chart-outline'],
   판독: ['camera', 'camera-outline'],
   백과: ['book', 'book-outline'],
-  금산정보: ['map', 'map-outline'],
+  인삼정보: ['map', 'map-outline'],
   가이드: ['information-circle', 'information-circle-outline'],
 };
 
@@ -57,7 +57,7 @@ const AppNavigator = () => {
       <Tab.Screen name="시세" component={MarketScreen} />
       <Tab.Screen name="판독" component={InspectionScreen} />
       <Tab.Screen name="백과" component={EncyclopediaScreen} />
-      <Tab.Screen name="금산정보" component={MapScreen} />
+      <Tab.Screen name="인삼정보" component={MapScreen} />
       <Tab.Screen name="가이드" component={GuideScreen} />
     </Tab.Navigator>
   );

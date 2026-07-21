@@ -1,6 +1,6 @@
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-export type MapCategory = 'cultivation' | 'seller' | 'certified';
+export type MapCategory = 'cultivation' | 'seller' | 'certified' | 'tour';
 
 export type MapDataItem = {
   id: string;

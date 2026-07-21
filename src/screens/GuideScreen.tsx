@@ -62,7 +62,7 @@ const GuideScreen = () => {
           </View>
           <View style={styles.headerCopy}>
             <Text style={styles.lightPanelTitle}>로그인 없이 이용</Text>
-            <Text style={styles.lightPanelText}>AI 판독, 시세, 백과, 금산정보 기능을 계정 연결 없이 사용할 수 있습니다.</Text>
+            <Text style={styles.lightPanelText}>AI 판독, 시세, 백과, 인삼정보 기능을 계정 연결 없이 사용할 수 있습니다.</Text>
           </View>
         </View>
         <Text style={styles.meta}>오늘 이 기기에서 실행한 AI 판독: {usageCount.toLocaleString('ko-KR')}회</Text>

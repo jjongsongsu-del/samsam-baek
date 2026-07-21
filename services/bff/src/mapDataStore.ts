@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-export const mapCategorySchema = z.enum(['cultivation', 'seller', 'certified']);
+export const mapCategorySchema = z.enum(['cultivation', 'seller', 'certified', 'tour']);
 export type MapCategory = z.infer<typeof mapCategorySchema>;
 
 export type MapDataItem = {
@@ -40,6 +40,7 @@ const headersByCategory: Record<MapCategory, string[]> = {
   cultivation: ['읍면', '지역', '행정리', '소재지', '주소', '연근', '년근', '신고면적', '실제면적', '경작면적'],
   seller: ['업체명', '업체전화번호', '업체주소', '취급제품', '취급제품설명'],
   certified: ['제품명', '식품구분', '제품유형', '업체명', '업체주소', '연락처', '인증일자', '인증만료일자'],
+  tour: ['관광지명', '명칭', '이름', '주소', '소재지', '전화번호', '연락처', '분류', '설명', '내용'],
 };
 
 const normalize = (value: unknown) => String(value ?? '').trim();
@@ -157,6 +158,24 @@ function normalizeCertified(row: Record<string, string>, index: number, fileName
   };
 }
 
+function normalizeTour(row: Record<string, string>, index: number, fileName: string, updatedAt: string): MapDataItem {
+  const title = firstValue(row, ['관광지명', '명칭', '이름', '장소명']) || `관광지 ${index + 1}`;
+  const tourType = firstValue(row, ['분류', '유형', '구분']);
+  const description = firstValue(row, ['설명', '내용', '소개']);
+  return {
+    id: `tour-${index + 1}`,
+    category: 'tour',
+    title,
+    subtitle: tourType || '금산 인삼 관광지',
+    address: firstValue(row, ['주소', '소재지', '위치']),
+    phone: firstValue(row, ['전화번호', '연락처', '문의']),
+    description,
+    tags: [title, tourType, '관광지', '인삼관광'].filter(Boolean),
+    sourceFile: fileName,
+    updatedAt,
+  };
+}
+
 function normalizeRows(category: MapCategory, fileName: string, rows: Record<string, string>[]) {
   const updatedAt = new Date().toISOString();
   return rows
@@ -167,6 +186,9 @@ function normalizeRows(category: MapCategory, fileName: string, rows: Record<str
       }
       if (category === 'certified') {
         return normalizeCertified(row, index, fileName, updatedAt);
+      }
+      if (category === 'tour') {
+        return normalizeTour(row, index, fileName, updatedAt);
       }
       return normalizeCultivation(row, index, fileName, updatedAt);
     });

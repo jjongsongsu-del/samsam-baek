@@ -24,6 +24,7 @@ const categories: CategoryMeta[] = [
   { key: 'cultivation', label: '경작지', icon: 'leaf', description: '금산 인삼 경작지 현황' },
   { key: 'seller', label: '판매업체', icon: 'storefront', description: '인삼관련제품 판매업체' },
   { key: 'certified', label: '금홍인증', icon: 'ribbon', description: '금산군 금홍인증제품' },
+  { key: 'tour', label: '관광지', icon: 'trail-sign', description: '금산 인삼 관광지와 축제 정보' },
 ];
 
 const googleMapsUrl = (query: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
@@ -173,7 +174,7 @@ const MapScreen = () => {
 
   return (
     <AppSurface onEndReached={loadMore}>
-      <ScreenHeader title="금산 인삼정보" description="경작지, 판매업체, 금홍인증제품을 분류와 검색으로 확인합니다." />
+      <ScreenHeader title="인삼정보" description="경작지, 판매업체, 금홍인증제품, 관광지를 분류와 검색으로 확인합니다." />
 
       <View style={styles.categoryGrid}>
         {categories.map((item) => {
