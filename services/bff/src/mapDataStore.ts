@@ -13,6 +13,9 @@ export type MapDataItem = {
   address?: string;
   phone?: string;
   description?: string;
+  website?: string;
+  imageUrl?: string;
+  details?: string[];
   tags: string[];
   metrics?: Record<string, string | number>;
   sourceFile?: string;
@@ -162,6 +165,7 @@ function normalizeTour(row: Record<string, string>, index: number, fileName: str
   const title = firstValue(row, ['관광지명', '명칭', '이름', '장소명']) || `관광지 ${index + 1}`;
   const tourType = firstValue(row, ['분류', '유형', '구분']);
   const description = firstValue(row, ['설명', '내용', '소개']);
+  const details = firstValue(row, ['상세정보', '상세', '세부내용', '비고', 'details']);
   return {
     id: `tour-${index + 1}`,
     category: 'tour',
@@ -170,6 +174,9 @@ function normalizeTour(row: Record<string, string>, index: number, fileName: str
     address: firstValue(row, ['주소', '소재지', '위치']),
     phone: firstValue(row, ['전화번호', '연락처', '문의']),
     description,
+    website: firstValue(row, ['홈페이지', 'URL', 'url', 'website']),
+    imageUrl: firstValue(row, ['이미지', '이미지URL', 'imageUrl', 'image']),
+    details: details ? details.split(/\s*[|;]\s*/).filter(Boolean) : undefined,
     tags: [title, tourType, '관광지', '인삼관광'].filter(Boolean),
     sourceFile: fileName,
     updatedAt,
@@ -229,7 +236,7 @@ export async function listMapData(options: { category?: MapCategory; q?: string;
     if (!query) {
       return true;
     }
-    return [item.title, item.subtitle, item.address, item.phone, item.description, ...item.tags]
+    return [item.title, item.subtitle, item.address, item.phone, item.description, item.website, ...(item.details ?? []), ...item.tags]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()

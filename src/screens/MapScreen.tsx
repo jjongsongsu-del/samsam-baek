@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { Alert, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View, type ImageSourcePropType } from 'react-native';
 import { AppSurface } from '../components/AppSurface';
 import { Panel } from '../components/Panel';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -31,6 +31,20 @@ const googleMapsUrl = (query: string) => `https://www.google.com/maps/search/?ap
 const googleNavigationUrl = (query: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}&travelmode=driving`;
 const phoneUrl = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
 const openUrl = (url: string) => Linking.openURL(url);
+const isHttpUrl = (value?: string) => Boolean(value && /^https?:\/\//i.test(value));
+const itemWebsite = (item: MapDataItem) => (isHttpUrl(item.website) ? item.website : isHttpUrl(item.sourceFile) ? item.sourceFile : undefined);
+const tourImages: Record<string, ImageSourcePropType> = {
+  'tour-ginseng-museum': require('../assets/tour/geumsan-ginseng-museum.jpg'),
+  'tour-ginseng-statue': require('../assets/tour/geumsan-ginseng-statue.jpg'),
+  'tour-ginseng-festival': require('../assets/tour/geumsan-world-ginseng-festival.jpg'),
+  'tour-samgyetang-festival': require('../assets/tour/geumsan-samgyetang-festival.jpg'),
+  'tour-ginseng-market': require('../assets/tour/geumsan-ginseng-herb-market.jpg'),
+  'tour-yeongju-insam-museum': require('../assets/tour/yeongju-insam-museum.jpg'),
+  'tour-punggi-ginseng-festival': require('../assets/tour/punggi-ginseng-festival.jpg'),
+  'tour-jinan-red-ginseng-festival': require('../assets/tour/jinan-red-ginseng-festival.jpg'),
+  'tour-jeungpyeong-ginsenggol-festival': require('../assets/tour/jeungpyeong-ginsenggol-festival.jpg'),
+  'tour-paju-gaeseong-ginseng-festival': require('../assets/tour/paju-gaeseong-ginseng-festival.png'),
+};
 
 const categoryLabel = (category: MapCategory) => categories.find((item) => item.key === category)?.label ?? category;
 const categoryFallback = (category: MapCategory) => mapFallbackData.filter((item) => item.category === category);
@@ -40,7 +54,7 @@ const matchesQuery = (item: MapDataItem, query: string) => {
   if (!normalized) {
     return true;
   }
-  return [item.title, item.subtitle, item.address, item.phone, item.description, ...item.tags]
+  return [item.title, item.subtitle, item.address, item.phone, item.description, item.website, ...(item.details ?? []), ...item.tags]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
@@ -295,6 +309,11 @@ const MapScreen = () => {
       ) : (
         filteredItems.map((item) => {
           const selected = selectedItem?.id === item.id;
+          const website = itemWebsite(item);
+          const showTourDetail = selected && item.category === 'tour';
+          const tourDetails = item.details ?? [];
+          const localTourImage = tourImages[item.id];
+          const tourImageSource = localTourImage ?? (item.imageUrl ? { uri: item.imageUrl } : undefined);
           return (
             <TouchableOpacity key={item.id} activeOpacity={0.86} onPress={() => setSelectedId(item.id)}>
               <Panel style={selected ? styles.selectedPanel : undefined}>
@@ -303,9 +322,39 @@ const MapScreen = () => {
                     <Text style={styles.region}>{item.title}</Text>
                     {item.subtitle ? <Text style={styles.itemSubtitle}>{item.subtitle}</Text> : null}
                   </View>
-                  <Ionicons name={selected ? 'checkmark-circle' : 'chevron-forward'} size={20} color={colors.primary60} />
+                  <Ionicons name={showTourDetail ? 'chevron-down-circle' : selected ? 'checkmark-circle' : 'chevron-forward'} size={20} color={colors.primary60} />
                 </View>
                 {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
+                {showTourDetail ? (
+                  <View style={styles.tourDetailBox}>
+                    {tourImageSource ? (
+                      <Image source={tourImageSource} style={styles.tourImage} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.tourImagePlaceholder}>
+                        <Ionicons name="trail-sign" size={34} color={colors.primary60} />
+                        <Text style={styles.tourImageTitle}>인삼 관광 정보</Text>
+                        <Text style={styles.tourImageText}>{item.title}</Text>
+                      </View>
+                    )}
+                    <Text style={styles.detailTitle}>상세정보</Text>
+                    {tourDetails.length > 0 ? (
+                      tourDetails.map((detail) => (
+                        <View key={detail} style={styles.detailRow}>
+                          <Ionicons name="ellipse" size={6} color={colors.primary60} />
+                          <Text style={styles.detailText}>{detail}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.detailText}>상세 정보는 홈페이지와 지도 정보를 함께 확인해 주세요.</Text>
+                    )}
+                    {website ? (
+                      <TouchableOpacity style={styles.homepageButton} onPress={() => openUrl(website)}>
+                        <Ionicons name="open-outline" size={16} color={colors.white} />
+                        <Text style={styles.homepageButtonText}>홈페이지 보기</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ) : null}
                 {item.address ? <Text style={styles.itemMeta}>{item.address}</Text> : null}
                 {item.phone ? <Text style={styles.itemMeta}>문의 {item.phone}</Text> : null}
                 {item.metrics ? (
@@ -330,6 +379,12 @@ const MapScreen = () => {
                     <TouchableOpacity style={styles.actionButton} onPress={() => openUrl(phoneUrl(item.phone ?? ''))}>
                       <Ionicons name="call" size={16} color={colors.primary60} />
                       <Text style={styles.actionText}>전화</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {website ? (
+                    <TouchableOpacity style={styles.actionButton} onPress={() => openUrl(website)}>
+                      <Ionicons name="open-outline" size={16} color={colors.primary60} />
+                      <Text style={styles.actionText}>홈</Text>
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -458,13 +513,50 @@ const styles = StyleSheet.create({
   region: { color: colors.cream, fontSize: 17, lineHeight: 26, fontWeight: '700' },
   itemSubtitle: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700', marginTop: 2 },
   description: { color: colors.gray70, fontSize: 14, lineHeight: 21, fontWeight: '700', marginBottom: 8 },
+  tourDetailBox: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    backgroundColor: colors.primary5,
+    padding: 10,
+    marginBottom: 10,
+  },
+  tourImage: { width: '100%', height: 144, borderRadius: 6, backgroundColor: colors.gray10, marginBottom: 10 },
+  tourImagePlaceholder: {
+    minHeight: 132,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    backgroundColor: colors.gray0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    marginBottom: 10,
+  },
+  tourImageTitle: { color: colors.ink, fontSize: 16, lineHeight: 24, fontWeight: '800', marginTop: 8 },
+  tourImageText: { color: colors.gray60, fontSize: 13, lineHeight: 20, fontWeight: '700', textAlign: 'center', marginTop: 2 },
+  detailTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: '800', marginBottom: 6 },
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 4 },
+  detailText: { flex: 1, color: colors.gray70, fontSize: 13, lineHeight: 20 },
+  homepageButton: {
+    minHeight: 40,
+    borderRadius: 6,
+    backgroundColor: colors.primary60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+  },
+  homepageButtonText: { color: colors.white, fontSize: 13, lineHeight: 20, fontWeight: '800' },
   itemMeta: { color: colors.gray60, fontSize: 13, lineHeight: 20, marginTop: 3 },
   metricWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   metricPill: { backgroundColor: colors.primary5, borderColor: colors.primary10, borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   metricText: { color: colors.primary60, fontSize: 12, lineHeight: 18, fontWeight: '700' },
-  itemActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  itemActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   actionButton: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
     minHeight: 40,
     borderRadius: 6,
     borderWidth: 1,

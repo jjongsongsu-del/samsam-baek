@@ -10,6 +10,9 @@ export type MapDataItem = {
   address?: string;
   phone?: string;
   description?: string;
+  website?: string;
+  imageUrl?: string;
+  details?: string[];
   tags: string[];
   metrics?: Record<string, string | number>;
   sourceFile?: string;
