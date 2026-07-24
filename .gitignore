@@ -20,6 +20,7 @@ yarn-error.log*
 .codex_pdf_pages/
 
 android/local.properties
+android/keystores/
 android/app/debug.keystore
 android/app/*.jks
 android/app/*.keystore

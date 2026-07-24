@@ -3,7 +3,7 @@
     "name": "삼삼백과",
     "slug": "samsam-baekgwa",
     "scheme": "kr.samsambaekgwa.app",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./samsam-i.png",
     "userInterfaceStyle": "light",

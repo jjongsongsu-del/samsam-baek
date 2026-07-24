@@ -4,8 +4,8 @@
 
 - 앱 이름: 삼삼백과
 - 패키지명: `kr.samsambaekgwa.app`
-- 버전: `0.1.0`
-- versionCode: `1`
+- 버전: `1.0.0`
+- versionCode: `2`
 - API 서버: `http://samsam.aodata.co.kr:8091`
 - 서버 상태: `/health` 응답 정상
 - targetSdkVersion: `35`
@@ -16,12 +16,16 @@
 ## Google Play 제출 전 필수 작업
 
 1. 업로드 키 생성 및 보관
-   - 현재 release 빌드는 업로드 키가 없으면 debug keystore로 서명될 수 있습니다.
-   - Play Console 제출용 AAB는 반드시 별도 upload keystore로 서명해야 합니다.
+   - 업로드 키 생성 완료: `android/keystores/samsam-upload-key.jks`
+   - 키 설정 파일 생성 완료: `android/keystores/samsam-upload-key.properties`
+   - 두 파일은 Git에 올리지 않고 별도 보관해야 합니다.
+   - SHA-1: `F4:C0:F6:2E:04:63:9F:20:8C:1C:46:B3:BC:81:ED:28:60:5A:68:7A`
+   - SHA-256: `02:29:9D:DA:B0:87:75:F7:9A:3C:95:4D:08:D1:C3:92:0F:31:21:56:3E:BF:AC:6F:B1:B4:1A:9B:BB:1B:8F:71`
 
 2. AAB 생성
    - Google Play 신규 앱은 Android App Bundle 형식이 기본 제출물입니다.
-   - 업로드 키 설정 후 `:app:bundleRelease`로 생성합니다.
+   - 생성 완료: `samsam-baekgwa-play-release.aab`
+   - 재생성 명령: `powershell -ExecutionPolicy Bypass -File scripts/build-play-aab.ps1`
 
 3. 개인정보처리방침 공개 URL 준비
    - 앱은 사진을 서버로 전송해 AI 판독을 수행합니다.
@@ -58,4 +62,3 @@ AI 인삼 판독, 시세, 백과, 지도를 한 번에 확인합니다.
 - 계정 정보: 일반 사용자 로그인 기능 없음
 - 저장 방식: 앱의 저장 목록은 사용 중인 기기 내부에 저장
 - 서버 저장: 기본적으로 원본 사진을 영구 저장하지 않음
-
