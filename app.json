@@ -25,7 +25,7 @@
       ]
     },
     "extra": {
-      "apiBaseUrl": "http://samsam.aodata.co.kr:8091"
+      "apiBaseUrl": "https://samsam.aodata.co.kr:8091"
     },
     "plugins": [
       "expo-font",

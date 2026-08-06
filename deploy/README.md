@@ -14,15 +14,22 @@ Run from the repository root:
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build
 ```
 
-If another service already uses ports 80 or 443 on the host, set the public
-HTTP port in `deploy/.env`:
+To serve the API through HTTPS on a custom public port such as 8091, set
+`deploy/.env` like this:
 
 ```env
-HTTP_PORT=8091
-CADDY_SITE_ADDRESS=:80
+HTTP_PORT=80
+HTTPS_PORT=8091
+CADDY_HTTPS_PORT=8091
+CADDY_SITE_ADDRESS=samsam.aodata.co.kr:8091
 ```
 
-Then the API will be available at `http://<server-host>:8091`.
+Then the API will be available at `https://samsam.aodata.co.kr:8091`.
+
+Keep port 80 open for Caddy/Let's Encrypt certificate issuance. The application
+traffic can still use port 8091. If port 80 cannot be opened on the public
+network, use DNS-based certificate issuance or provide a manually issued
+certificate to Caddy.
 
 ## Seed data
 
