@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AppSurface } from '../components/AppSurface';
 import { MascotSpotlight } from '../components/MascotSpotlight';
 import { Panel } from '../components/Panel';
@@ -9,6 +9,8 @@ import { guideItems } from '../data/placeholder';
 import { inspectionManual } from '../data/inspectionManual';
 import { loadAccountState, type AccountState } from '../services/accountService';
 import { colors } from '../theme';
+
+const PRIVACY_POLICY_URL = 'https://samsam.aodata.co.kr/privacy';
 
 const GuideScreen = () => {
   const [accountState, setAccountState] = useState<AccountState | null>(null);
@@ -73,6 +75,10 @@ const GuideScreen = () => {
         <Text style={styles.text}>사진은 AI 판독을 위해 서버로 전송되며, 서버는 기본적으로 원본 사진을 저장하지 않습니다.</Text>
         <Text style={styles.meta}>앱의 저장 목록은 사용 중인 기기 안에만 보관됩니다.</Text>
         <Text style={styles.meta}>계정 로그인 기능을 사용하지 않으므로 소셜 계정 정보는 수집하지 않습니다.</Text>
+        <TouchableOpacity style={styles.linkButton} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+          <Ionicons name="open-outline" size={16} color={colors.primary60} />
+          <Text style={styles.linkButtonText}>개인정보처리방침 보기</Text>
+        </TouchableOpacity>
       </Panel>
 
       <Panel>
@@ -109,6 +115,19 @@ const styles = StyleSheet.create({
   lightPanelTitle: { color: colors.ink, fontSize: 18, lineHeight: 27, fontWeight: '700' },
   lightPanelText: { color: colors.gray60, fontSize: 14, lineHeight: 21 },
   meta: { color: colors.gray60, fontSize: 12, lineHeight: 18, marginTop: 6 },
+  linkButton: {
+    minHeight: 40,
+    marginTop: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    backgroundColor: colors.primary5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  linkButtonText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
 });
 
 export default GuideScreen;

@@ -38,6 +38,139 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'samsam-bff' });
 });
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+app.get('/privacy', (_req, res) => {
+  const effectiveDate = '2026년 8월 6일';
+  const contactEmail = escapeHtml(config.privacyContactEmail);
+  const operatorName = escapeHtml(config.serviceOperatorName);
+
+  res.type('html').send(`<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>삼삼백과 개인정보처리방침</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #17231f;
+      background: #f7f7f3;
+    }
+    body {
+      margin: 0;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px 56px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.25;
+    }
+    h2 {
+      margin: 34px 0 10px;
+      font-size: 20px;
+      line-height: 1.35;
+    }
+    p, li {
+      font-size: 16px;
+    }
+    .meta {
+      color: #5f6f68;
+      margin: 0 0 28px;
+    }
+    section {
+      border-top: 1px solid #d9ded8;
+      padding-top: 4px;
+    }
+    a {
+      color: #1d6b4f;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>삼삼백과 개인정보처리방침</h1>
+    <p class="meta">시행일: ${effectiveDate}</p>
+
+    <p>삼삼백과는 인삼 사진 기반 AI 판독, 인삼 시세, 백과, 인삼정보 서비스를 제공하는 앱입니다. 본 개인정보처리방침은 삼삼백과 서비스 이용 과정에서 처리되는 개인정보와 데이터의 항목, 이용 목적, 보관 및 문의 방법을 안내합니다.</p>
+
+    <section>
+      <h2>1. 처리하는 정보</h2>
+      <p>삼삼백과는 서비스 제공을 위해 다음 정보를 처리할 수 있습니다.</p>
+      <ul>
+        <li>사용자가 촬영하거나 선택한 인삼 사진 또는 사용자가 지정한 이미지 영역</li>
+        <li>AI 판독 결과: 연근, 등급, 신뢰도, 가격 등급 코드 등</li>
+        <li>앱 내 저장 목록: 사용자가 기기에 저장한 판독 결과와 이미지 경로</li>
+        <li>관리자 기능 사용 시 관리자 ID 및 인증 토큰</li>
+      </ul>
+      <p>삼삼백과는 일반 사용자를 위한 소셜 로그인 또는 회원가입 기능을 사용하지 않습니다.</p>
+    </section>
+
+    <section>
+      <h2>2. 정보 이용 목적</h2>
+      <ul>
+        <li>인삼 사진 AI 판독 및 결과 제공</li>
+        <li>판독 결과 화면 표시 및 사용자가 저장한 이력 표시</li>
+        <li>인삼 시세, 백과, 인삼정보 제공</li>
+        <li>지도 데이터 CSV 반영을 위한 관리자 인증</li>
+        <li>서비스 오류 확인 및 품질 개선</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>3. 사진 데이터 처리</h2>
+      <p>사용자가 AI 판독을 실행하면 사진 또는 선택한 이미지 영역이 서버로 전송되어 AI 판독에 사용됩니다. 서버는 기본적으로 원본 사진을 영구 저장하지 않는 것을 원칙으로 합니다.</p>
+      <p>앱에 저장한 판독 목록은 사용 중인 기기 내부에 저장됩니다.</p>
+    </section>
+
+    <section>
+      <h2>4. 제3자 제공</h2>
+      <p>삼삼백과는 사용자의 개인정보를 법령에 따른 경우를 제외하고 제3자에게 판매하거나 제공하지 않습니다.</p>
+    </section>
+
+    <section>
+      <h2>5. 보관 및 삭제</h2>
+      <p>앱 내부에 저장된 판독 결과는 사용자가 앱에서 삭제할 수 있습니다. 서버 로그와 관리자 처리 기록은 서비스 운영, 보안, 오류 확인에 필요한 기간 동안 보관될 수 있습니다.</p>
+    </section>
+
+    <section>
+      <h2>6. 권한 안내</h2>
+      <ul>
+        <li>카메라: 인삼 사진 촬영</li>
+        <li>사진/이미지 접근: 사용자가 선택한 사진으로 AI 판독</li>
+        <li>인터넷: 서버 AI 판독, 시세, 백과, 인삼정보 조회</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>7. 보안</h2>
+      <p>삼삼백과는 서비스 제공 과정에서 전송되는 데이터를 보호하기 위해 HTTPS 통신 적용을 기준으로 운영합니다.</p>
+    </section>
+
+    <section>
+      <h2>8. 문의</h2>
+      <p>운영자: ${operatorName}</p>
+      <p>문의 이메일: <a href="mailto:${contactEmail}">${contactEmail}</a></p>
+    </section>
+  </main>
+</body>
+</html>`);
+});
+
 app.post('/v1/auth/social', async (req, res, next) => {
   try {
     const body = socialLoginSchema.parse(req.body);

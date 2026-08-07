@@ -59,7 +59,7 @@ type StageSize = {
   height: number;
 };
 
-const CONTACT_EMAIL = 'support@samsambaekgwa.kr';
+const CONTACT_EMAIL = 'aodata.ljk@gmail.com';
 const mascotImage = require('../../samsam-i.png');
 const DEFAULT_SELECTION: SelectionRect = { x: 0.12, y: 0.12, width: 0.76, height: 0.76 };
 const MIN_SELECTION_SIZE = 0.16;

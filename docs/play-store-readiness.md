@@ -6,7 +6,7 @@
 - 패키지명: `kr.samsambaekgwa.app`
 - 버전: `1.0.0`
 - versionCode: `2`
-- API 서버: `https://samsam.aodata.co.kr:8091`
+- API 서버: `https://samsam.aodata.co.kr`
 - 서버 상태: `/health` 응답 정상
 - targetSdkVersion: `35`
 - 주요 권한: 카메라, 인터넷, 이미지 읽기
@@ -30,10 +30,12 @@
 3. 개인정보처리방침 공개 URL 준비
    - 앱은 사진을 서버로 전송해 AI 판독을 수행합니다.
    - Play Console의 개인정보처리방침 URL과 데이터 보안 섹션에 동일하게 반영해야 합니다.
+   - 공개 URL: `https://samsam.aodata.co.kr/privacy`
+   - 문의 이메일: `aodata.ljk@gmail.com`
 
 4. HTTPS 적용
-   - API 주소는 `https://samsam.aodata.co.kr:8091` 기준으로 설정합니다.
-   - Caddy가 Let's Encrypt 인증서를 자동 발급하려면 외부 80 포트도 열려 있어야 합니다.
+   - API 주소는 `https://samsam.aodata.co.kr` 기준으로 설정합니다.
+   - 외부 HTTPS 프록시가 기존 8091 서비스로 요청을 전달합니다.
 
 5. 스토어 등록 이미지 준비
    - 앱 아이콘: 준비됨

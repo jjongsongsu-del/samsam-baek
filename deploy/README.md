@@ -14,22 +14,28 @@ Run from the repository root:
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build
 ```
 
-To serve the API through HTTPS on a custom public port such as 8091, set
-`deploy/.env` like this:
+This compose stack keeps Samsam Baekgwa available on the existing service port
+8091. If HTTPS is handled by an external reverse proxy, set `deploy/.env` like
+this:
 
 ```env
-HTTP_PORT=80
-HTTPS_PORT=8091
-CADDY_HTTPS_PORT=8091
-CADDY_SITE_ADDRESS=samsam.aodata.co.kr:8091
+HTTP_PORT=8091
+CADDY_SITE_ADDRESS=:80
 ```
 
-Then the API will be available at `https://samsam.aodata.co.kr:8091`.
+The external reverse proxy should forward public traffic from:
 
-Keep port 80 open for Caddy/Let's Encrypt certificate issuance. The application
-traffic can still use port 8091. If port 80 cannot be opened on the public
-network, use DNS-based certificate issuance or provide a manually issued
-certificate to Caddy.
+```text
+https://samsam.aodata.co.kr
+```
+
+to the server's existing Samsam Baekgwa service on port 8091.
+
+The public privacy policy page is served by the BFF at:
+
+```text
+https://samsam.aodata.co.kr/privacy
+```
 
 ## Seed data
 

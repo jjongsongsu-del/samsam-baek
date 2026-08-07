@@ -14,4 +14,6 @@ export const config = {
   googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? '',
   adminUsername: process.env.ADMIN_USERNAME ?? 'manager',
   adminPassword: process.env.ADMIN_PASSWORD ?? 'admin1234',
+  privacyContactEmail: process.env.PRIVACY_CONTACT_EMAIL ?? 'aodata.ljk@gmail.com',
+  serviceOperatorName: process.env.SERVICE_OPERATOR_NAME ?? '삼삼백과 운영팀',
 };
