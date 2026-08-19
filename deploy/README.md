@@ -44,3 +44,11 @@ On first container start, `docker-entrypoint.sh` copies them into `/app/data`
 only when the target files do not already exist. This lets a fresh Docker
 volume start with the bundled map data while preserving CSV data uploaded later
 through the admin UI.
+
+When encyclopedia seed data changes, update the existing Docker volume after
+pulling the latest source:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml cp services/bff/data/encyclopedia.json bff:/app/data/encyclopedia.json
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml restart bff
+```
