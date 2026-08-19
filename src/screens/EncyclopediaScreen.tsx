@@ -9,35 +9,40 @@ import { fallbackEncyclopediaEntries } from '../data/encyclopediaFallback';
 import {
   askEncyclopediaAssistant,
   fetchEncyclopediaEntries,
-  fetchGoogleAiSearchAnswer,
   makeGoogleAiSearchUrl,
   type EncyclopediaEntry,
   type EncyclopediaResponse,
 } from '../services/encyclopediaService';
 import { colors } from '../theme';
 
+const ALL_CATEGORY = '전체';
 const fallbackCategories = Array.from(new Set(fallbackEncyclopediaEntries.map((entry) => entry.category)));
 
 const filterFallback = (category: string, query: string): EncyclopediaResponse => {
   const normalizedQuery = query.trim().toLowerCase();
   const items = fallbackEncyclopediaEntries.filter((entry) => {
-    const categoryMatch = category === '전체' || entry.category === category;
+    const categoryMatch = category === ALL_CATEGORY || entry.category === category;
     const queryMatch =
       !normalizedQuery ||
-      [entry.title, entry.summary, entry.body, entry.category, ...entry.tags].some((value) => value.toLowerCase().includes(normalizedQuery));
+      [entry.title, entry.summary, entry.body, entry.category, ...entry.tags].some((value) =>
+        value.toLowerCase().includes(normalizedQuery),
+      );
     return categoryMatch && queryMatch;
   });
 
   return { items, categories: fallbackCategories, fromFallback: true };
 };
 
-const makeLocalAssistantAnswer = (question: string, entry?: EncyclopediaEntry) => {
-  const target = entry ?? fallbackEncyclopediaEntries[0];
-  return `삼박사 설명: ${target.title} 기준으로 보면, ${target.summary} ${target.body} 질문하신 내용 "${question}"은 이 기준과 함께 확인하면 좋습니다.`;
+const formatDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString('ko-KR');
 };
 
 const EncyclopediaScreen = () => {
-  const [category, setCategory] = useState('전체');
+  const [category, setCategory] = useState(ALL_CATEGORY);
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<EncyclopediaEntry[]>(fallbackEncyclopediaEntries);
   const [categories, setCategories] = useState<string[]>(fallbackCategories);
@@ -45,11 +50,13 @@ const EncyclopediaScreen = () => {
   const [selectedEntry, setSelectedEntry] = useState<EncyclopediaEntry | undefined>();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
-  const [googleSearchUrl, setGoogleSearchUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [assistantLoading, setAssistantLoading] = useState(false);
 
-  const categoryOptions = useMemo(() => ['전체', ...categories.filter((item) => item !== '전체')], [categories]);
+  const categoryOptions = useMemo(
+    () => [ALL_CATEGORY, ...categories.filter((item) => item !== ALL_CATEGORY)],
+    [categories],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -85,6 +92,11 @@ const EncyclopediaScreen = () => {
     };
   }, [category, query]);
 
+  const handleSelect = (entry: EncyclopediaEntry) => {
+    setSelectedEntry((current) => (current?.id === entry.id ? undefined : entry));
+    setAnswer('');
+  };
+
   const handleAsk = async () => {
     const trimmed = question.trim();
     if (!trimmed) {
@@ -92,31 +104,31 @@ const EncyclopediaScreen = () => {
     }
 
     setAssistantLoading(true);
-    setGoogleSearchUrl('');
     try {
-      const googleAnswer = await fetchGoogleAiSearchAnswer(trimmed);
-      setAnswer(googleAnswer || 'Google AI 검색 결과가 비어 있습니다.');
+      const serverAnswer = await askEncyclopediaAssistant(trimmed, selectedEntry?.id);
+      setAnswer(serverAnswer);
     } catch {
-      try {
-        const serverAnswer = await askEncyclopediaAssistant(trimmed, selectedEntry?.id);
-        setAnswer(serverAnswer);
-      } catch {
-        setGoogleSearchUrl(makeGoogleAiSearchUrl(trimmed));
-        setAnswer(
-          'Google AI 검색 결과는 앱에서 직접 가져올 수 없어 Google 검색으로 연결합니다. 백엔드에 Google Custom Search 또는 승인된 검색 API를 연결하면 이 영역에 요약 결과를 표시할 수 있습니다.',
-        );
-      }
+      const target = selectedEntry ?? entries[0] ?? fallbackEncyclopediaEntries[0];
+      setAnswer(
+        `삼박사 설명: ${target.title} 내용을 기준으로 보면 ${target.summary} ${target.body} 더 넓게 확인하려면 아래 검색 버튼으로 관련 자료를 찾아볼 수 있습니다.`,
+      );
     } finally {
       setAssistantLoading(false);
     }
   };
 
+  const openSource = (entry: EncyclopediaEntry) => {
+    if (entry.sourceUrl) {
+      Linking.openURL(entry.sourceUrl);
+    }
+  };
+
   return (
     <AppSurface>
-      <ScreenHeader title="삼박사의 인삼백과" description="서버에 등록된 인삼 지식을 분류와 검색으로 찾아봅니다." />
+      <ScreenHeader title="인삼 백과사전" description="인삼의 종류, 재배, 품질, 섭취, 구매 정보를 검색해 볼 수 있습니다." />
       <MascotSpotlight
-        title="삼박사가 알려주는 인삼 지식"
-        description="서버 연결이 어려울 때도 기본 백과사전으로 주요 기준을 확인할 수 있습니다."
+        title="삼박사가 정리한 인삼 지식"
+        description="AI 판독과 시세 확인 전에 알아두면 좋은 내용을 주제별로 모았습니다. 건강 관련 내용은 일반 정보로만 참고해 주세요."
       />
 
       {fromFallback ? (
@@ -136,6 +148,11 @@ const EncyclopediaScreen = () => {
           style={styles.searchInput}
           returnKeyType="search"
         />
+        {query ? (
+          <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="검색어 지우기">
+            <Ionicons name="close-circle" size={20} color={colors.gray60} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={styles.categoryRow}>
@@ -154,34 +171,34 @@ const EncyclopediaScreen = () => {
         <View style={styles.assistantHeader}>
           <Ionicons name="sparkles" size={20} color={colors.primary60} />
           <View style={styles.assistantCopy}>
-            <Text style={styles.assistantTitle}>삼박사 AI 설명 비서</Text>
-            <Text style={styles.assistantMeta}>{selectedEntry ? `${selectedEntry.title} 기준으로 답변` : '전체 백과사전 기준으로 답변'}</Text>
+            <Text style={styles.assistantTitle}>삼박사에게 물어보기</Text>
+            <Text style={styles.assistantMeta}>{selectedEntry ? `${selectedEntry.title} 기준 답변` : '전체 백과 기준 답변'}</Text>
           </View>
         </View>
         <View style={styles.questionRow}>
           <TextInput
             value={question}
             onChangeText={setQuestion}
-            placeholder="예: 수삼 등급은 어떻게 보나요?"
+            placeholder="이 인삼은 어떻게 보관해야 해?"
             placeholderTextColor={colors.gray40}
             style={styles.questionInput}
             multiline
           />
           <TouchableOpacity style={styles.askButton} onPress={handleAsk} disabled={assistantLoading}>
-            <Ionicons name="send" size={17} color={colors.white} />
+            <Ionicons name={assistantLoading ? 'hourglass' : 'send'} size={17} color={colors.white} />
           </TouchableOpacity>
         </View>
         {answer ? <Text style={styles.answerText}>{answer}</Text> : null}
-        {googleSearchUrl ? (
-          <TouchableOpacity style={styles.googleButton} onPress={() => Linking.openURL(googleSearchUrl)}>
+        {question.trim() ? (
+          <TouchableOpacity style={styles.googleButton} onPress={() => Linking.openURL(makeGoogleAiSearchUrl(question.trim()))}>
             <Ionicons name="logo-google" size={16} color={colors.primary60} />
-            <Text style={styles.googleButtonText}>Google AI 검색으로 보기</Text>
+            <Text style={styles.googleButtonText}>웹에서 더 찾아보기</Text>
           </TouchableOpacity>
         ) : null}
       </Panel>
 
       <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>백과 항목</Text>
+        <Text style={styles.listTitle}>백과 목록</Text>
         <Text style={styles.listCount}>{loading ? '불러오는 중' : `${entries.length}개`}</Text>
       </View>
 
@@ -191,28 +208,51 @@ const EncyclopediaScreen = () => {
           <Text style={styles.noticeText}>다른 검색어나 분류를 선택해 주세요.</Text>
         </Panel>
       ) : (
-        entries.map((entry) => (
-          <TouchableOpacity key={entry.id} activeOpacity={0.86} onPress={() => setSelectedEntry(entry)}>
-            <Panel style={selectedEntry?.id === entry.id ? styles.selectedPanel : undefined}>
-              <View style={styles.row}>
-                <View style={styles.iconBox}>
-                  <Ionicons name="library" size={18} color={colors.white} />
-                </View>
-                <View style={styles.content}>
-                  <Text style={styles.tag}>{entry.category}</Text>
-                  <Text style={styles.title}>{entry.title}</Text>
-                  <Text style={styles.summary}>{entry.summary}</Text>
-                  <Text style={styles.text}>{entry.body}</Text>
-                  <View style={styles.tagRow}>
-                    {entry.tags.map((tag) => (
-                      <Text key={tag} style={styles.smallTag}>#{tag}</Text>
-                    ))}
+        entries.map((entry) => {
+          const expanded = selectedEntry?.id === entry.id;
+          return (
+            <TouchableOpacity key={entry.id} activeOpacity={0.86} onPress={() => handleSelect(entry)}>
+              <Panel style={expanded ? styles.selectedPanel : undefined}>
+                <View style={styles.row}>
+                  <View style={styles.iconBox}>
+                    <Ionicons name="library" size={18} color={colors.white} />
+                  </View>
+                  <View style={styles.content}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.tag}>{entry.category}</Text>
+                      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.primary60} />
+                    </View>
+                    <Text style={styles.title}>{entry.title}</Text>
+                    <Text style={styles.summary}>{entry.summary}</Text>
+                    {expanded ? (
+                      <>
+                        <Text style={styles.text}>{entry.body}</Text>
+                        {entry.caution ? <Text style={styles.caution}>{entry.caution}</Text> : null}
+                        <View style={styles.metaBox}>
+                          <Text style={styles.metaText}>갱신일 {formatDate(entry.updatedAt)}</Text>
+                          {entry.sourceName ? <Text style={styles.metaText}>출처 {entry.sourceName}</Text> : null}
+                        </View>
+                        {entry.sourceUrl ? (
+                          <TouchableOpacity style={styles.sourceButton} onPress={() => openSource(entry)}>
+                            <Ionicons name="open-outline" size={16} color={colors.primary60} />
+                            <Text style={styles.sourceButtonText}>원문 보기</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </>
+                    ) : null}
+                    <View style={styles.tagRow}>
+                      {entry.tags.map((tag) => (
+                        <Text key={tag} style={styles.smallTag}>
+                          #{tag}
+                        </Text>
+                      ))}
+                    </View>
                   </View>
                 </View>
-              </View>
-            </Panel>
-          </TouchableOpacity>
-        ))
+              </Panel>
+            </TouchableOpacity>
+          );
+        })
       )}
     </AppSurface>
   );
@@ -302,10 +342,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary60,
   },
   content: { flex: 1 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   tag: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700', marginBottom: 5 },
   title: { color: colors.cream, fontSize: 17, lineHeight: 26, fontWeight: '700', marginBottom: 6 },
   summary: { color: colors.gray70, fontSize: 14, lineHeight: 21, fontWeight: '700', marginBottom: 8 },
   text: { color: colors.muted, fontSize: 15, lineHeight: 23 },
+  caution: {
+    color: colors.ink,
+    backgroundColor: colors.primary10,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '700',
+    marginTop: 10,
+  },
+  metaBox: { marginTop: 10, gap: 3 },
+  metaText: { color: colors.gray60, fontSize: 12, lineHeight: 18 },
+  sourceButton: {
+    minHeight: 38,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+  },
+  sourceButtonText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   smallTag: { color: colors.primary60, fontSize: 12, lineHeight: 18, fontWeight: '700' },
 });

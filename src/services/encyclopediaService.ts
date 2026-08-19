@@ -7,6 +7,9 @@ export type EncyclopediaEntry = {
   summary: string;
   body: string;
   tags: string[];
+  sourceName?: string;
+  sourceUrl?: string;
+  caution?: string;
   updatedAt: string;
 };
 
@@ -51,20 +54,6 @@ export async function askEncyclopediaAssistant(question: string, entryId?: strin
 
   const payload = await response.json();
   return String(payload.answer ?? '');
-}
-
-export async function fetchGoogleAiSearchAnswer(query: string) {
-  const response = await fetch(`${API_BASE_URL}/v1/search/google-ai`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
-  });
-  if (!response.ok) {
-    throw new Error('Google AI 검색 결과를 불러올 수 없습니다.');
-  }
-
-  const payload = await response.json();
-  return String(payload.answer ?? payload.summary ?? '');
 }
 
 export function makeGoogleAiSearchUrl(query: string) {
