@@ -16,4 +16,10 @@ export const config = {
   adminPassword: process.env.ADMIN_PASSWORD ?? 'admin1234',
   privacyContactEmail: process.env.PRIVACY_CONTACT_EMAIL ?? 'aodata.ljk@gmail.com',
   serviceOperatorName: process.env.SERVICE_OPERATOR_NAME ?? '삼삼백과 운영팀',
+  appLatestVersion: process.env.APP_LATEST_VERSION ?? '1.0.4',
+  appLatestVersionCode: Number(process.env.APP_LATEST_VERSION_CODE ?? 14),
+  appMinimumVersionCode: Number(process.env.APP_MINIMUM_VERSION_CODE ?? 1),
+  appStoreUrl: process.env.APP_STORE_URL ?? 'https://play.google.com/store/apps/details?id=kr.samsambaekgwa.app',
+  appUpdateMessage: process.env.APP_UPDATE_MESSAGE ?? '새 버전이 있습니다. 업데이트 후 이용해 주세요.',
+  appForceUpdateMessage: process.env.APP_FORCE_UPDATE_MESSAGE ?? '현재 버전은 더 이상 지원되지 않습니다. 업데이트 후 이용해 주세요.',
 };

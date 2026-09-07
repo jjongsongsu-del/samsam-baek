@@ -3,8 +3,7 @@
     "name": "삼삼백과",
     "slug": "samsam-baekgwa",
     "scheme": "kr.samsambaekgwa.app",
-    "version": "1.0.0",
-    "orientation": "portrait",
+    "version": "1.0.4",
     "icon": "./samsam-i.png",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
@@ -20,8 +19,11 @@
         "backgroundColor": "#fffaf2"
       },
       "permissions": [
-        "CAMERA",
-        "READ_MEDIA_IMAGES"
+        "CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE"
       ]
     },
     "extra": {

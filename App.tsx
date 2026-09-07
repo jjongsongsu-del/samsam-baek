@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
+import { AppUpdateGate } from './src/components/AppUpdateGate';
 import { colors } from './src/theme';
 
 const mascotImage = require('./samsam-i.png');
@@ -30,7 +30,6 @@ export default function App() {
     return (
       <>
         <LaunchScreen />
-        <StatusBar style="dark" />
       </>
     );
   }
@@ -38,8 +37,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <AppNavigator />
-        <StatusBar style="dark" />
+        <AppUpdateGate>
+          <AppNavigator />
+        </AppUpdateGate>
       </NavigationContainer>
     </SafeAreaProvider>
   );

@@ -37,6 +37,32 @@ app.use(express.json({ limit: '12mb' }));
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'samsam-bff' });
 });
+const appVersionQuerySchema = z.object({
+  platform: z.string().optional(),
+  currentVersion: z.string().optional(),
+  currentVersionCode: z.coerce.number().int().nonnegative().default(0),
+});
+
+app.get('/v1/app-version', (req, res) => {
+  const query = appVersionQuerySchema.parse(req.query);
+  const latestVersionCode = Number.isFinite(config.appLatestVersionCode) ? config.appLatestVersionCode : 0;
+  const minimumVersionCode = Number.isFinite(config.appMinimumVersionCode) ? config.appMinimumVersionCode : 0;
+  const forceUpdate = query.currentVersionCode > 0 && query.currentVersionCode < minimumVersionCode;
+  const updateRequired = query.currentVersionCode > 0 && query.currentVersionCode < latestVersionCode;
+
+  res.json({
+    platform: query.platform ?? 'android',
+    currentVersion: query.currentVersion ?? '',
+    currentVersionCode: query.currentVersionCode,
+    latestVersion: config.appLatestVersion,
+    latestVersionCode,
+    minimumVersionCode,
+    updateRequired,
+    forceUpdate,
+    storeUrl: config.appStoreUrl,
+    message: forceUpdate ? config.appForceUpdateMessage : config.appUpdateMessage,
+  });
+});
 
 function escapeHtml(value: string) {
   return value
