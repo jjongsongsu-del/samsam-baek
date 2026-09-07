@@ -372,9 +372,10 @@ app.get('/v1/map-data', async (req, res, next) => {
   try {
     const category = req.query.category ? mapCategorySchema.parse(req.query.category) : undefined;
     const q = req.query.q ? String(req.query.q) : undefined;
+    const region = req.query.region ? z.enum(['금산', '파주']).parse(req.query.region) : undefined;
     const limit = req.query.limit == null ? undefined : Number(req.query.limit);
     const offset = req.query.offset == null ? undefined : Number(req.query.offset);
-    res.json(await listMapData({ category, q, limit, offset }));
+    res.json(await listMapData({ category, q, region, limit, offset }));
   } catch (error) {
     next(error);
   }

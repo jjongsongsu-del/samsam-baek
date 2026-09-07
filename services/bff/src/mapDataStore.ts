@@ -32,6 +32,7 @@ export const mapImportSchema = z.object({
   csvText: z.string().min(1).optional(),
   csvBase64: z.string().min(1).optional(),
   encoding: z.enum(['utf8', 'euc-kr']).optional(),
+  region: z.enum(['금산', '파주']).optional(),
 }).refine((body) => body.csvText || body.csvBase64, {
   message: 'csvText or csvBase64 is required',
 });
@@ -40,7 +41,7 @@ const dataDir = path.resolve('data');
 const dataFile = path.join(dataDir, 'map-data.json');
 
 const headersByCategory: Record<MapCategory, string[]> = {
-  cultivation: ['읍면', '지역', '행정리', '소재지', '주소', '연근', '년근', '신고면적', '실제면적', '경작면적'],
+  cultivation: ['읍면', '지역', '행정리', '소재지', '주소', '필지소재지', '경작지주소', '연근', '년근', '경작년근', '신고면적', '실제면적', '경작면적', '면적', '연근시작년도', '계약구분', '계약', '삼포'],
   seller: ['업체명', '업체전화번호', '업체주소', '취급제품', '취급제품설명'],
   certified: ['제품명', '식품구분', '제품유형', '업체명', '업체주소', '연락처', '인증일자', '인증만료일자'],
   tour: ['관광지명', '명칭', '이름', '주소', '소재지', '전화번호', '연락처', '분류', '설명', '내용'],
@@ -97,26 +98,62 @@ function firstValue(row: Record<string, string>, candidates: string[]) {
   return key ? normalize(row[key]) : '';
 }
 
-function normalizeCultivation(row: Record<string, string>, index: number, fileName: string, updatedAt: string): MapDataItem {
-  const region = firstValue(row, ['읍면', '지역', '읍·면', '읍/면']) || '금산군';
+function formatArea(value: string) {
+  if (!value) {
+    return '';
+  }
+  const numeric = Number(value.replace(/,/g, ''));
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return `${numeric.toLocaleString('ko-KR')}㎡`;
+  }
+  return value;
+}
+
+function inferCultivationRegion(row: Record<string, string>, address: string, regionHint?: '금산' | '파주') {
+  if (regionHint) {
+    return regionHint;
+  }
+  const joined = [address, firstValue(row, ['시군', '지역', '소재지'])].join(' ');
+  if (joined.includes('파주')) {
+    return '파주';
+  }
+  return '금산';
+}
+
+function normalizeCultivation(row: Record<string, string>, index: number, fileName: string, updatedAt: string, regionHint?: '금산' | '파주'): MapDataItem {
+  const address = firstValue(row, ['소재지', '주소', '필지소재지', '경작지주소']).replace(/^\[\d{3}-\d{3}\]\s*/, '');
+  const dataRegion = inferCultivationRegion(row, address, regionHint);
+  const district = firstValue(row, ['읍면', '지역', '읍·면', '읍/면']);
   const village = firstValue(row, ['행정리', '리', '마을']);
-  const address = firstValue(row, ['소재지', '주소', '필지소재지']);
+  const pajuMatch = address.match(/파주시\s+([^\s]+)\s+([^\s]+)/);
+  const region = dataRegion === '파주' ? '파주' : district || '금산군';
+  const localName = dataRegion === '파주' ? [pajuMatch?.[1], pajuMatch?.[2]].filter(Boolean).join(' ') : village;
   const cropYear = firstValue(row, ['연근', '년근', '경작년근']);
   const reportedArea = firstValue(row, ['신고면적', '신고 경작면적', '경작면적']);
   const actualArea = firstValue(row, ['실제면적', '실재 경작면적', '실제 경작면적']);
+  const area = firstValue(row, ['면적']);
+  const plantingYear = firstValue(row, ['연근시작년도']);
+  const contractType = firstValue(row, ['계약구분']);
+  const contract = firstValue(row, ['계약']);
+  const status = firstValue(row, ['삼포']);
+  const cropYearLabel = cropYear && !cropYear.endsWith('년근') ? `${cropYear}년근` : cropYear;
 
   return {
-    id: `cultivation-${index + 1}`,
+    id: `cultivation-${dataRegion}-${index + 1}`,
     category: 'cultivation',
-    title: village ? `${region} ${village}` : region,
-    subtitle: cropYear ? `${cropYear}년근 경작지` : '인삼 경작지',
+    title: localName ? `${region} ${localName}` : `${region} 인삼 경작지`,
+    subtitle: cropYearLabel ? `${cropYearLabel} 경작지` : '인삼 경작지',
     address: address || `${region} 인삼 경작지`,
-    description: [reportedArea ? `신고면적 ${reportedArea}` : '', actualArea ? `실제면적 ${actualArea}` : ''].filter(Boolean).join(' / '),
-    tags: [region, cropYear ? `${cropYear}년근` : '', '경작지'].filter(Boolean),
+    description: [reportedArea ? `신고면적 ${reportedArea}` : '', actualArea ? `실제면적 ${actualArea}` : '', area ? `면적 ${formatArea(area)}` : '', plantingYear ? `연근시작년도 ${plantingYear}` : '', contract || contractType].filter(Boolean).join(' / '),
+    details: [status ? `삼포: ${status}` : '', contractType ? `계약구분: ${contractType}` : '', contract ? `계약: ${contract}` : ''].filter(Boolean),
+    tags: [dataRegion, region, localName, cropYearLabel, '경작지'].filter(Boolean),
     metrics: {
-      cropYear: cropYear || '-',
+      region: dataRegion,
+      cropYear: cropYearLabel || '-',
       reportedArea: reportedArea || '-',
       actualArea: actualArea || '-',
+      area: area ? formatArea(area) : '-',
+      plantingYear: plantingYear || '-',
     },
     sourceFile: fileName,
     updatedAt,
@@ -183,7 +220,7 @@ function normalizeTour(row: Record<string, string>, index: number, fileName: str
   };
 }
 
-function normalizeRows(category: MapCategory, fileName: string, rows: Record<string, string>[]) {
+function normalizeRows(category: MapCategory, fileName: string, rows: Record<string, string>[], regionHint?: '금산' | '파주') {
   const updatedAt = new Date().toISOString();
   return rows
     .filter((row) => headersByCategory[category].some((header) => normalize(row[header])))
@@ -197,7 +234,7 @@ function normalizeRows(category: MapCategory, fileName: string, rows: Record<str
       if (category === 'tour') {
         return normalizeTour(row, index, fileName, updatedAt);
       }
-      return normalizeCultivation(row, index, fileName, updatedAt);
+      return normalizeCultivation(row, index, fileName, updatedAt, regionHint);
     });
 }
 
@@ -226,17 +263,33 @@ function decodeCsvBase64(csvBase64: string, encoding?: 'utf8' | 'euc-kr') {
   return utf8.includes('�') ? new TextDecoder('euc-kr').decode(bytes) : utf8;
 }
 
-export async function listMapData(options: { category?: MapCategory; q?: string; limit?: number; offset?: number }) {
+
+function itemRegion(item: MapDataItem) {
+  const metricRegion = typeof item.metrics?.region === 'string' ? item.metrics.region : '';
+  const haystack = [metricRegion, item.title, item.subtitle, item.address, item.description, ...item.tags].filter(Boolean).join(' ');
+  if (haystack.includes('파주')) {
+    return '파주';
+  }
+  if (haystack.includes('금산')) {
+    return '금산';
+  }
+  return '';
+}
+
+export async function listMapData(options: { category?: MapCategory; q?: string; region?: '금산' | '파주'; limit?: number; offset?: number }) {
   const data = await readData();
   const query = normalize(options.q).toLowerCase();
   const filtered = data.items.filter((item) => {
     if (options.category && item.category !== options.category) {
       return false;
     }
+    if (options.region && itemRegion(item) !== options.region) {
+      return false;
+    }
     if (!query) {
       return true;
     }
-    return [item.title, item.subtitle, item.address, item.phone, item.description, item.website, ...(item.details ?? []), ...item.tags]
+    return [item.title, item.subtitle, item.address, item.phone, item.description, item.website, ...(item.details ?? []), ...item.tags, ...Object.values(item.metrics ?? {})]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
@@ -257,14 +310,17 @@ export async function listMapData(options: { category?: MapCategory; q?: string;
 export async function importMapData(input: z.infer<typeof mapImportSchema>) {
   const csvText = input.csvText ?? decodeCsvBase64(input.csvBase64 ?? '', input.encoding);
   const rows = parseCsv(csvText);
-  const nextItems = normalizeRows(input.category, input.fileName, rows);
+  const nextItems = normalizeRows(input.category, input.fileName, rows, input.region);
   const current = await readData();
-  const items = [...current.items.filter((item) => item.category !== input.category), ...nextItems];
+  const items = input.category === 'cultivation' && input.region
+    ? [...current.items.filter((item) => item.category !== input.category || itemRegion(item) !== input.region), ...nextItems]
+    : [...current.items.filter((item) => item.category !== input.category), ...nextItems];
   await writeData({ items });
   return {
     category: input.category,
     imported: nextItems.length,
     total: items.length,
+    region: input.region,
     fileName: input.fileName,
   };
 }

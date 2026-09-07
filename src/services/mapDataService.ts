@@ -24,6 +24,7 @@ export type MapImportResult = {
   imported: number;
   total: number;
   fileName: string;
+  region?: '금산' | '파주';
 };
 
 export type MapDataPage = {
@@ -34,10 +35,13 @@ export type MapDataPage = {
   hasMore: boolean;
 };
 
-export async function fetchMapData(category: MapCategory, q?: string, limit = 50, offset = 0): Promise<MapDataPage> {
+export async function fetchMapData(category: MapCategory, q?: string, limit = 50, offset = 0, region?: '금산' | '파주'): Promise<MapDataPage> {
   const params = new URLSearchParams({ category });
   if (q?.trim()) {
     params.set('q', q.trim());
+  }
+  if (region) {
+    params.set('region', region);
   }
   params.set('limit', String(limit));
   params.set('offset', String(offset));
@@ -56,11 +60,11 @@ export async function fetchMapData(category: MapCategory, q?: string, limit = 50
   };
 }
 
-export async function importMapCsv(category: MapCategory, fileName: string, csvBase64: string, adminToken: string): Promise<MapImportResult> {
+export async function importMapCsv(category: MapCategory, fileName: string, csvBase64: string, adminToken: string, region?: '금산' | '파주'): Promise<MapImportResult> {
   const response = await fetch(`${API_BASE_URL}/v1/admin/map-data/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
-    body: JSON.stringify({ category, fileName, csvBase64 }),
+    body: JSON.stringify({ category, fileName, csvBase64, region }),
   });
   if (!response.ok) {
     const message = await response.text();

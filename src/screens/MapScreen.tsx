@@ -21,7 +21,7 @@ type CategoryMeta = {
 };
 
 const categories: CategoryMeta[] = [
-  { key: 'cultivation', label: '경작지', icon: 'leaf', description: '금산 인삼 경작지 현황' },
+  { key: 'cultivation', label: '경작지', icon: 'leaf', description: '금산·파주 인삼 경작지 현황' },
   { key: 'seller', label: '판매업체', icon: 'storefront', description: '인삼관련제품 판매업체' },
   { key: 'certified', label: '금홍인증', icon: 'ribbon', description: '금산군 금홍인증제품' },
   { key: 'tour', label: '관광지', icon: 'trail-sign', description: '금산 인삼 관광지와 축제 정보' },
@@ -46,6 +46,10 @@ const tourImages: Record<string, ImageSourcePropType> = {
   'tour-paju-gaeseong-ginseng-festival': require('../assets/tour/paju-gaeseong-ginseng-festival.jpg'),
 };
 
+type CultivationRegion = '전체' | '금산' | '파주';
+
+const cultivationRegions: CultivationRegion[] = ['전체', '금산', '파주'];
+
 const categoryLabel = (category: MapCategory) => categories.find((item) => item.key === category)?.label ?? category;
 const categoryFallback = (category: MapCategory) => mapFallbackData.filter((item) => item.category === category);
 
@@ -61,9 +65,25 @@ const matchesQuery = (item: MapDataItem, query: string) => {
     .includes(normalized);
 };
 
+
+const itemRegion = (item: MapDataItem): '금산' | '파주' | undefined => {
+  const metricRegion = typeof item.metrics?.region === 'string' ? item.metrics.region : '';
+  const haystack = [metricRegion, item.title, item.subtitle, item.address, item.description, ...item.tags].filter(Boolean).join(' ');
+  if (haystack.includes('파주')) {
+    return '파주';
+  }
+  if (haystack.includes('금산')) {
+    return '금산';
+  }
+  return undefined;
+};
+
+const matchesRegion = (item: MapDataItem, region: CultivationRegion) => region === '전체' || itemRegion(item) === region;
+
 const MapScreen = () => {
   const [category, setCategory] = useState<MapCategory>('cultivation');
   const [query, setQuery] = useState('');
+  const [cultivationRegion, setCultivationRegion] = useState<CultivationRegion>('전체');
   const [items, setItems] = useState<MapDataItem[]>(categoryFallback('cultivation'));
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id ?? null);
   const [loading, setLoading] = useState(false);
@@ -80,7 +100,8 @@ const MapScreen = () => {
   const loadingMoreRef = useRef(false);
 
   const selectedCategory = categories.find((item) => item.key === category) ?? categories[0];
-  const filteredItems = useMemo(() => items.filter((item) => matchesQuery(item, query)), [items, query]);
+  const regionFilter = category === 'cultivation' ? cultivationRegion : '전체';
+  const filteredItems = useMemo(() => items.filter((item) => matchesQuery(item, query) && matchesRegion(item, regionFilter)), [items, query, regionFilter]);
   const selectedItem = filteredItems.find((item) => item.id === selectedId) ?? filteredItems[0];
   const selectedQuery = selectedItem?.address || selectedItem?.title || '금산군 인삼';
 
@@ -88,9 +109,9 @@ const MapScreen = () => {
     setLoading(true);
     setHasMore(false);
     try {
-      const page = await fetchMapData(category, query, PAGE_SIZE, 0);
+      const page = await fetchMapData(category, query, PAGE_SIZE, 0, category === 'cultivation' && cultivationRegion !== '전체' ? cultivationRegion : undefined);
       const serverItems = page.items;
-      const fallback = categoryFallback(category).filter((item) => matchesQuery(item, query));
+      const fallback = categoryFallback(category).filter((item) => matchesQuery(item, query) && matchesRegion(item, regionFilter));
       const nextItems = serverItems.length > 0 || page.total > 0 ? serverItems : fallback;
       setItems(nextItems);
       setSelectedId(nextItems[0]?.id ?? null);
@@ -98,7 +119,7 @@ const MapScreen = () => {
       setHasMore(page.hasMore);
       setSourceMessage(serverItems.length > 0 || page.total > 0 ? '서버 반영 데이터' : '로컬 기본 데이터');
     } catch {
-      const fallback = categoryFallback(category);
+      const fallback = categoryFallback(category).filter((item) => matchesQuery(item, query) && matchesRegion(item, regionFilter));
       setItems(fallback);
       setSelectedId(fallback[0]?.id ?? null);
       setTotalCount(fallback.length);
@@ -107,7 +128,7 @@ const MapScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, query]);
+  }, [category, cultivationRegion, query, regionFilter]);
 
   const loadMore = useCallback(async () => {
     if (loading || loadingMore || loadingMoreRef.current || !hasMore) {
@@ -116,7 +137,7 @@ const MapScreen = () => {
     loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const page = await fetchMapData(category, query, PAGE_SIZE, items.length);
+      const page = await fetchMapData(category, query, PAGE_SIZE, items.length, category === 'cultivation' && cultivationRegion !== '전체' ? cultivationRegion : undefined);
       setItems((current) => {
         const seen = new Set(current.map((item) => item.id));
         const next = page.items.filter((item) => !seen.has(item.id));
@@ -130,7 +151,7 @@ const MapScreen = () => {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [category, hasMore, items.length, loading, loadingMore, query]);
+  }, [category, cultivationRegion, hasMore, items.length, loading, loadingMore, query]);
 
   useEffect(() => {
     loadData();
@@ -176,7 +197,13 @@ const MapScreen = () => {
 
       const asset = picked.assets[0];
       const csvBase64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
-      const result = await importMapCsv(category, asset.name, csvBase64, adminSession.accessToken);
+      const result = await importMapCsv(
+        category,
+        asset.name,
+        csvBase64,
+        adminSession.accessToken,
+        category === 'cultivation' && cultivationRegion !== '전체' ? cultivationRegion : undefined,
+      );
       Alert.alert('반영 완료', `${categoryLabel(result.category)} 데이터 ${result.imported.toLocaleString('ko-KR')}건을 반영했습니다.`);
       await loadData();
     } catch (error: any) {
@@ -208,6 +235,19 @@ const MapScreen = () => {
           );
         })}
       </View>
+
+      {category === 'cultivation' ? (
+        <View style={styles.regionFilterRow}>
+          {cultivationRegions.map((item) => {
+            const active = cultivationRegion === item;
+            return (
+              <TouchableOpacity key={item} style={[styles.regionFilterButton, active ? styles.regionFilterButtonActive : null]} onPress={() => setCultivationRegion(item)}>
+                <Text style={[styles.regionFilterText, active ? styles.regionFilterTextActive : null]}>{item}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ) : null}
 
       <Panel tone="accent">
         <View style={styles.mapHeader}>
@@ -420,6 +460,21 @@ const styles = StyleSheet.create({
   categoryButtonActive: { backgroundColor: colors.primary60, borderColor: colors.primary60 },
   categoryText: { color: colors.primary60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
   categoryTextActive: { color: colors.white },
+  regionFilterRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  regionFilterButton: {
+    minHeight: 36,
+    minWidth: 64,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary10,
+    backgroundColor: colors.gray0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  regionFilterButtonActive: { backgroundColor: colors.primary5, borderColor: colors.primary60 },
+  regionFilterText: { color: colors.gray60, fontSize: 13, lineHeight: 20, fontWeight: '700' },
+  regionFilterTextActive: { color: colors.primary60 },
   mapHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
   mapHeaderText: { flex: 1 },
   panelTitle: { color: colors.cream, fontSize: 18, lineHeight: 27, fontWeight: '700' },
